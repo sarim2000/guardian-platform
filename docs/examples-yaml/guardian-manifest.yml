@@ -1,0 +1,55 @@
+kind: Service
+metadata:
+  # --- Required ---
+  name: user-profile-api # Unique identifier for this service (e.g., kebab-case)
+
+  # --- Optional ---
+  displayName: "User Profile API" # Human-readable name for UIs
+  description: "Manages user profile data, including personal information, preferences, and activity history."
+  annotations: # For custom metadata, operational notes, etc.
+    last-reviewed-by: "jane.doe@example.com"
+    review-date: "2025-05-01"
+    data-classification: "confidential"
+spec:
+  # --- Required ---
+  owner:
+    team: alpha-squad # Team slug or ID responsible for this service
+    # email: alpha-squad-dl@example.com # Optional: Contact email for the team
+
+  lifecycle: production # Current stage: e.g., development, beta, production, deprecated, retired
+  
+  # --- Optional ---
+  tier: tier2 # Criticality: e.g., tier1 (most critical) to tier4 (least critical)
+  type: api # Nature of the service: e.g., api, frontend, worker, cronjob, database, library
+  partOf: customer-identity-platform # Logical grouping: name of a larger system/platform
+
+  dependencies:
+    - name: auth-service # Name of another service (its metadata.name) or an external dependency
+      relationship: "requires-authentication-from" # How this service depends on the other
+      critical: true # If true, this dependency is vital for core functionality
+    - name: user-activity-db
+      relationship: "reads-writes-to"
+      critical: true
+    - name: "external-geoip-provider" # For external, non-Guardian managed dependencies
+      relationship: "calls-external-api"
+      critical: false
+
+  techStack: # List of key technologies used
+    - "Language: Python 3.11"
+    - "Framework: FastAPI"
+    - "Database Client: SQLAlchemy"
+    - "Cache: Redis"
+
+  links: # Important URLs related to the service
+    - name: "Source Code (GitLab)"
+      url: "https://gitlab.example.com/alpha-squad/user-profile-api"
+    - name: "API Documentation (Swagger UI)"
+      url: "https://api.example.com/user-profile/docs"
+    - name: "Primary Dashboard (Grafana)"
+      url: "https://grafana.example.com/d/user-profile-api-overview"
+    - name: "Runbook (Confluence)"
+      url: "https://confluence.example.com/display/ENG/UserProfileAPI+Runbook"
+
+  # ID of a ChecklistTemplate defined in Guardian.
+  # The Guardian platform will use this to associate readiness checks.
+  defaultChecklistTemplateId: "standard-api-prod-checklist-v1"

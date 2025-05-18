@@ -1,0 +1,63 @@
+kind: ChecklistTemplate
+metadata:
+  # --- Required ---
+  # This 'name' is the ID referenced by 'defaultChecklistTemplateId' in Service manifests
+  name: standard-api-prod-checklist-v1
+
+  # --- Optional ---
+  displayName: "Standard API Production Readiness Checklist v1"
+  description: "A comprehensive checklist for API services preparing for production deployment."
+  labels: # For categorizing templates
+    domain: "general-api"
+    version: "1.0.2"
+    scope: "production"
+spec:
+  # Defines the sections and individual items within the checklist
+  sections:
+    - title: "1. Design & Documentation"
+      description: "Ensures the service is well-designed and documented."
+      items:
+        - id: "DES-001" # Unique ID for this checklist item within this template
+          description: "API contract (e.g., OpenAPI/Swagger spec) is defined, up-to-date, and published."
+          severity: "critical" # e.g., critical, high, medium, low
+          expectedEvidence: "Link to the API specification document/URL."
+          responsibleRole: "Engineering Lead / Developer" # Suggested role
+        - id: "DOC-001"
+          description: "Comprehensive runbook/playbook exists covering common operational tasks, troubleshooting steps, and escalation paths."
+          severity: "critical"
+          expectedEvidence: "Link to the runbook (e.g., Confluence, PagerDuty)."
+          responsibleRole: "SRE / Engineering Lead"
+
+    - title: "2. Monitoring & Alerting"
+      description: "Verifies robust monitoring, logging, and alerting capabilities."
+      items:
+        - id: "MON-001"
+          description: "Key performance indicators (KPIs) like request rate, error rate (per endpoint), and P95/P99 latency are dashboarded."
+          severity: "critical"
+          expectedEvidence: "Link to the primary service monitoring dashboard."
+          responsibleRole: "Developer / SRE"
+        - id: "MON-002"
+          description: "Actionable alerts are configured for critical failure scenarios and KPI breaches, with clear notification channels."
+          severity: "critical"
+          expectedEvidence: "Link to alert definitions or on-call management system (e.g., PagerDuty service)."
+          responsibleRole: "SRE / Engineering Lead"
+        - id: "LOG-001"
+          description: "Structured logs for all significant events (requests, errors, business transactions) are aggregated in a centralized logging system."
+          severity: "high"
+          expectedEvidence: "Link to log query examples or logging dashboard."
+          responsibleRole: "Developer"
+
+    - title: "3. Security & Compliance"
+      description: "Ensures security best practices and compliance requirements are met."
+      items:
+        - id: "SEC-001"
+          description: "Static Application Security Testing (SAST) and dependency vulnerability scans are integrated into CI/CD, and critical findings are addressed."
+          severity: "critical"
+          expectedEvidence: "Link to latest scan reports or vulnerability management dashboard."
+          responsibleRole: "Security Champion / Engineering Lead"
+        - id: "SEC-002"
+          description: "Authentication and authorization mechanisms are implemented for all API endpoints according to the principle of least privilege."
+          severity: "critical"
+          expectedEvidence: "Documentation of auth mechanisms; review of access controls."
+          responsibleRole: "Engineering Lead"
+    # ... more sections and items as needed
