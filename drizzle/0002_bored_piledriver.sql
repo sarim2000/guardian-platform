@@ -1,0 +1,1 @@
+ALTER TABLE "services" ADD CONSTRAINT "unq_service_identifier" UNIQUE("external_repo_id","manifest_path");

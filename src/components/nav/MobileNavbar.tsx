@@ -6,8 +6,10 @@ import { Burger, Text, UnstyledButton } from '@mantine/core'
 import { Group } from '@mantine/core'
 import { AppShell } from '@mantine/core'
 import { IconShieldChevron } from '@tabler/icons-react'
+import { useRouter } from 'next/navigation'
 
 export function MobileNavbar({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [opened, { toggle }] = useDisclosure()
 
   return (
@@ -21,25 +23,18 @@ export function MobileNavbar({ children }: { children: React.ReactNode }) {
           <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
           <Group justify="space-between" style={{ flex: 1 }}>
             <Group gap={8} align="center" className="hover:opacity-90 transition-opacity">
-              <IconShieldChevron 
-                size={32} 
-                className="text-primary"
-                aria-hidden="true"
-              />
-              <Text 
-                size="lg" 
-                fw={600}
-                className="font-heading tracking-wide"
-                component="h1"
-              >
+              <IconShieldChevron size={32} className="text-primary" aria-hidden="true" />
+              <Text size="lg" fw={600} className="font-heading tracking-wide" component="h1">
                 Guardian Platform
               </Text>
             </Group>
             <Group ml="xl" gap={0} visibleFrom="sm">
-              <UnstyledButton className={classes.control}>Home</UnstyledButton>
-              <UnstyledButton className={classes.control}>Blog</UnstyledButton>
-              <UnstyledButton className={classes.control}>Contacts</UnstyledButton>
-              <UnstyledButton className={classes.control}>Support</UnstyledButton>
+              <UnstyledButton className={classes.control}
+              
+              onClick={() => {
+                router.push('/admin');
+              }}
+              >Admin</UnstyledButton>
             </Group>
           </Group>
         </Group>

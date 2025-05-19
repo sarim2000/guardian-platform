@@ -59,8 +59,8 @@ Build a robust, extensible foundation. Prioritize code quality, data model integ
 **Goal**: Expose the ingested service data via APIs for the frontend and potentially other clients.
 
 ### VI. API Endpoint Development (Backend - Next.js API Routes)
-- [ ] Implement POST /api/catalog/ingestion/trigger (secure it, trigger async ingestion)
-- [ ] Implement GET /api/services (basic listing, initial pagination)
+- [X] Implement POST /api/catalog/ingestion/trigger (secure it, trigger async ingestion)
+- [X] Implement GET /api/services (basic listing, initial pagination)
 - [ ] Implement GET /api/services/{id} (retrieve single service)
 - [ ] (Backend Testing) Write unit/integration tests for API endpoint handlers
 - [ ] (Backend Testing) Manually test all API endpoints using Postman/Insomnia
