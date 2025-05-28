@@ -18,6 +18,7 @@ import {
   LoadingOverlay,
   ActionIcon,
   Tooltip,
+  ScrollArea,
 } from '@mantine/core';
 import { IconRefresh, IconSearch, IconAlertCircle, IconCloud } from '@tabler/icons-react';
 
@@ -211,107 +212,121 @@ export default function AWSResourcesPage() {
         )}
 
         <Paper p="md" withBorder>
-          <Group justify="space-between" align="end">
-            <Group>
-              <Select
-                label="Resource Type"
-                placeholder="All types"
-                data={[
-                  { value: '', label: 'All types' },
-                  ...resourceTypes.map(type => ({ value: type, label: type }))
-                ]}
-                value={resourceTypeFilter}
-                onChange={(value) => setResourceTypeFilter(value || '')}
-                clearable
-              />
-              <Select
-                label="Region"
-                placeholder="All regions"
-                data={[
-                  { value: '', label: 'All regions' },
-                  ...regions.map(region => ({ value: region, label: region }))
-                ]}
-                value={regionFilter}
-                onChange={(value) => setRegionFilter(value || '')}
-                clearable
-              />
-              <TextInput
-                label="Search"
-                placeholder="Search by ARN, name, or type..."
-                leftSection={<IconSearch size={16} />}
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.currentTarget.value)}
-              />
+          <Stack gap="md">
+            <Group justify="space-between" align="end" wrap="wrap">
+              <Group wrap="wrap">
+                <Select
+                  label="Resource Type"
+                  placeholder="All types"
+                  data={[
+                    { value: '', label: 'All types' },
+                    ...resourceTypes.map(type => ({ value: type, label: type }))
+                  ]}
+                  value={resourceTypeFilter}
+                  onChange={(value) => setResourceTypeFilter(value || '')}
+                  clearable
+                  style={{ minWidth: 200 }}
+                />
+                <Select
+                  label="Region"
+                  placeholder="All regions"
+                  data={[
+                    { value: '', label: 'All regions' },
+                    ...regions.map(region => ({ value: region, label: region }))
+                  ]}
+                  value={regionFilter}
+                  onChange={(value) => setRegionFilter(value || '')}
+                  clearable
+                  style={{ minWidth: 150 }}
+                />
+                <TextInput
+                  label="Search"
+                  placeholder="Search by ARN, name, or type..."
+                  leftSection={<IconSearch size={16} />}
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.currentTarget.value)}
+                  style={{ minWidth: 250 }}
+                />
+              </Group>
+              <Text size="sm" c="dimmed">
+                {totalCount} resources found
+              </Text>
             </Group>
-            <Text size="sm" c="dimmed">
-              {totalCount} resources found
-            </Text>
-          </Group>
+          </Stack>
         </Paper>
 
         <Paper withBorder pos="relative">
           <LoadingOverlay visible={loading} />
           
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Resource Type</Table.Th>
-                <Table.Th>Name</Table.Th>
-                <Table.Th>ARN</Table.Th>
-                <Table.Th>Region</Table.Th>
-                <Table.Th>Account ID</Table.Th>
-                <Table.Th>Last Seen</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {filteredResources.length === 0 ? (
+          <ScrollArea>
+            <Table striped highlightOnHover>
+              <Table.Thead>
                 <Table.Tr>
-                  <Table.Td colSpan={6}>
-                    <Text ta="center" c="dimmed" py="xl">
-                      {loading ? 'Loading...' : 'No AWS resources found. Try discovering resources first.'}
-                    </Text>
-                  </Table.Td>
+                  <Table.Th style={{ minWidth: 140 }}>Resource Type</Table.Th>
+                  <Table.Th style={{ minWidth: 120 }}>Name</Table.Th>
+                  <Table.Th style={{ minWidth: 200 }}>ARN</Table.Th>
+                  <Table.Th style={{ minWidth: 100 }}>Region</Table.Th>
+                  <Table.Th style={{ minWidth: 120 }}>Account ID</Table.Th>
+                  <Table.Th style={{ minWidth: 100 }}>Last Seen</Table.Th>
                 </Table.Tr>
-              ) : (
-                filteredResources.map((resource) => (
-                  <Table.Tr key={resource.id}>
-                    <Table.Td>
-                      <Badge color={getResourceTypeColor(resource.resourceType)} variant="light">
-                        {resource.resourceType}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text fw={500}>
-                        {resource.nameTag || 'Unnamed'}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Tooltip label={resource.arn}>
-                        <Text size="sm" c="dimmed" style={{ maxWidth: 300 }} truncate>
-                          {resource.arn}
-                        </Text>
-                      </Tooltip>
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge variant="outline" size="sm">
-                        {resource.awsRegion}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm" c="dimmed">
-                        {resource.awsAccountId}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm" c="dimmed">
-                        {new Date(resource.lastSeenAt).toLocaleDateString()}
+              </Table.Thead>
+              <Table.Tbody>
+                {filteredResources.length === 0 ? (
+                  <Table.Tr>
+                    <Table.Td colSpan={6}>
+                      <Text ta="center" c="dimmed" py="xl">
+                        {loading ? 'Loading...' : 'No AWS resources found. Try discovering resources first.'}
                       </Text>
                     </Table.Td>
                   </Table.Tr>
-                ))
-              )}
-            </Table.Tbody>
-          </Table>
+                ) : (
+                  filteredResources.map((resource) => (
+                    <Table.Tr key={resource.id}>
+                      <Table.Td>
+                        <Badge 
+                          color={getResourceTypeColor(resource.resourceType)} 
+                          variant="light"
+                          size="sm"
+                          style={{ maxWidth: 130 }}
+                        >
+                          <Text truncate size="xs">
+                            {resource.resourceType}
+                          </Text>
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text fw={500} size="sm" style={{ maxWidth: 110 }} truncate>
+                          {resource.nameTag || 'Unnamed'}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Tooltip label={resource.arn} multiline>
+                          <Text size="xs" c="dimmed" style={{ maxWidth: 180 }} truncate>
+                            {resource.arn}
+                          </Text>
+                        </Tooltip>
+                      </Table.Td>
+                      <Table.Td>
+                        <Badge variant="outline" size="xs">
+                          {resource.awsRegion}
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="xs" c="dimmed" style={{ maxWidth: 110 }} truncate>
+                          {resource.awsAccountId}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="xs" c="dimmed">
+                          {new Date(resource.lastSeenAt).toLocaleDateString()}
+                        </Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))
+                )}
+              </Table.Tbody>
+            </Table>
+          </ScrollArea>
         </Paper>
 
         {totalPages > 1 && (
