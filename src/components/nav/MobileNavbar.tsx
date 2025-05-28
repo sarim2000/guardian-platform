@@ -9,7 +9,7 @@ import { IconShieldChevron } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 
 export function MobileNavbar({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
+  const router = useRouter()
   const [opened, { toggle }] = useDisclosure()
 
   return (
@@ -22,29 +22,87 @@ export function MobileNavbar({ children }: { children: React.ReactNode }) {
         <Group h="100%" px="md">
           <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
           <Group justify="space-between" style={{ flex: 1 }}>
-            <Group gap={8} align="center" className="hover:opacity-90 transition-opacity">
+            <Group
+              gap={8}
+              align="center"
+              className="hover:opacity-90 transition-opacity"
+              onClick={() => {
+                router.push('/')
+              }}
+              style={{ cursor: 'pointer' }}
+            >
               <IconShieldChevron size={32} className="text-primary" aria-hidden="true" />
               <Text size="lg" fw={600} className="font-heading tracking-wide" component="h1">
                 Guardian Platform
               </Text>
             </Group>
             <Group ml="xl" gap={0} visibleFrom="sm">
-              <UnstyledButton className={classes.control}
-              
-              onClick={() => {
-                router.push('/admin');
-              }}
-              >Admin</UnstyledButton>
+              <UnstyledButton
+                className={classes.control}
+                onClick={() => {
+                  router.push('/catalog')
+                }}
+              >
+                Catalog
+              </UnstyledButton>
+              <UnstyledButton
+                className={classes.control}
+                onClick={() => {
+                  router.push('/aws-resources')
+                }}
+              >
+                AWS Resources
+              </UnstyledButton>
+              <UnstyledButton
+                className={classes.control}
+                onClick={() => {
+                  router.push('/admin')
+                }}
+              >
+                Admin
+              </UnstyledButton>
             </Group>
           </Group>
         </Group>
       </AppShell.Header>
 
       <AppShell.Navbar py="md" px={4}>
-        <UnstyledButton className={classes.control}>Home</UnstyledButton>
-        <UnstyledButton className={classes.control}>Blog</UnstyledButton>
-        <UnstyledButton className={classes.control}>Contacts</UnstyledButton>
-        <UnstyledButton className={classes.control}>Support</UnstyledButton>
+        <UnstyledButton 
+          className={classes.control}
+          onClick={() => {
+            router.push('/')
+            toggle()
+          }}
+        >
+          Home
+        </UnstyledButton>
+        <UnstyledButton 
+          className={classes.control}
+          onClick={() => {
+            router.push('/catalog')
+            toggle()
+          }}
+        >
+          Catalog
+        </UnstyledButton>
+        <UnstyledButton 
+          className={classes.control}
+          onClick={() => {
+            router.push('/aws-resources')
+            toggle()
+          }}
+        >
+          AWS Resources
+        </UnstyledButton>
+        <UnstyledButton 
+          className={classes.control}
+          onClick={() => {
+            router.push('/admin')
+            toggle()
+          }}
+        >
+          Admin
+        </UnstyledButton>
       </AppShell.Navbar>
 
       <AppShell.Main>{children}</AppShell.Main>

@@ -16,17 +16,11 @@ Build a robust, extensible foundation. Prioritize code quality, data model integ
 - [x] Setup mechanism for managing environment variables (.env)
 - [x] Define initial environment variables (POSTGRES_URL, LOG_LEVEL)
 
-#### Basic Logging:
-- [ ] Integrate a structured logging library (e.g., Pino) for backend services
-
-#### Error Handling Framework:
-- [ ] Define a basic framework for consistent backend error handling
-
 ### II. Guardian Entity YAML Definitions & Schema (v1alpha1)
-- [ ] Formally Document Service Kind YAML Structure (as detailed in previous TODO)
-- [ ] Acknowledge ChecklistTemplate Kind exists (for defaultChecklistTemplateId reference)
-- [ ] Create example guardian-manifest.yaml files for testing
-- [ ] Decide on the canonical path for the manifest file (e.g., guardian-manifest.yaml at root)
+- [X] Formally Document Service Kind YAML Structure (as detailed in previous TODO)
+- [X] Acknowledge ChecklistTemplate Kind exists (for defaultChecklistTemplateId reference)
+- [X] Create example guardian-manifest.yaml files for testing
+- [X] Decide on the canonical path for the manifest file (e.g., guardian-manifest.yaml at root)
 
 ### III. Database Design & Implementation (PostgreSQL)
 - [X] Choose and integrate ORM (e.g., Drizzle or Prisma)
@@ -40,14 +34,14 @@ Build a robust, extensible foundation. Prioritize code quality, data model integ
 **Goal**: Implement the mechanism to fetch, parse, and store service manifests from Git.
 
 ### II. Guardian Entity YAML Definitions & Schema (Continued)
-- [ ] Choose and integrate YAML parsing library (e.g., js-yaml)
-- [ ] Implement schema validation logic for parsed Service manifest data (e.g., using Zod with the parser)
+- [X] Choose and integrate YAML parsing library (e.g., js-yaml)
+- [X] Implement schema validation logic for parsed Service manifest data (e.g., using Zod with the parser)
 
 ### IV. Git Provider Integration Service (Backend)
-- [ ] Define environment variables for Git integration (GIT_PROVIDER_PAT, GIT_PROVIDER_ORGANIZATION_NAME, GIT_PROVIDER_TYPE)
-- [ ] Secure PAT Handling: Ensure PAT is loaded securely
-- [ ] Design Extensible Git Service Interface (IGitProviderAdapter)
-- [ ] Implement GitHub Adapter (or chosen first provider) for listRepositories and getFileContent
+- [X] Define environment variables for Git integration (GIT_PROVIDER_PAT, GIT_PROVIDER_ORGANIZATION_NAME, GIT_PROVIDER_TYPE)
+- [X] Secure PAT Handling: Ensure PAT is loaded securely
+- [X] Design Extensible Git Service Interface (IGitProviderAdapter)
+- [X] Implement GitHub Adapter (or chosen first provider) for listRepositories and getFileContent
 
 ### V. Service Catalog Core Logic & Ingestion (Backend)
 - [ ] Create Manifest Ingestion Service module

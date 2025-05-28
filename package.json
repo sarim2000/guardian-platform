@@ -12,10 +12,14 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@aws-sdk/client-config-service": "^3.817.0",
+    "@aws-sdk/client-resource-groups-tagging-api": "^3.817.0",
+    "@mantine/charts": "^8.0.1",
     "@mantine/core": "^8.0.1",
     "@mantine/hooks": "^8.0.1",
     "@octokit/rest": "^21.1.1",
     "@tabler/icons-react": "^3.33.0",
+    "@xyflow/react": "^12.6.4",
     "dotenv": "^16.5.0",
     "drizzle-orm": "^0.43.1",
     "js-yaml": "^4.1.0",
@@ -23,6 +27,7 @@
     "postgres": "^3.4.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "recharts": "^2.15.3",
     "zod": "^3.24.4"
   },
   "devDependencies": {

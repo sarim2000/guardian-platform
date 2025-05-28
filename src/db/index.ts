@@ -7,3 +7,7 @@ export const db = drizzle({
     url: env.DATABASE_URL,
   }
 });
+
+// Export schemas
+export * from './schema/service';
+export * from './schema/aws-resources';
