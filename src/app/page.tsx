@@ -139,7 +139,7 @@ export default function HomePage() {
 
                   <Group justify="flex-end">
                     <Anchor component="span" c="blue">
-                      View Services <IconArrowRight size={rem(14)} style={{ verticalAlign: 'middle' }} />
+                      View Services
                     </Anchor>
                   </Group>
                 </Stack>
