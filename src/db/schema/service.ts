@@ -56,6 +56,7 @@ export const services = pgTable('services', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(), // You might want an ON UPDATE trigger or handle this in code
   lastIngestedAt: timestamp('last_ingested_at', { withTimezone: true }),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }), // For soft deletion - null means not deleted
 }, (table) => {
   return {
     // Example indexes
@@ -63,6 +64,7 @@ export const services = pgTable('services', {
     idxOwnerTeam: index('idx_owner_team').on(table.ownerTeam),
     idxLifecycle: index('idx_lifecycle').on(table.lifecycle),
     idxExternalRepo: index('idx_external_repo').on(table.externalRepoId, table.gitProvider), // For unique identification of repo
+    idxDeletedAt: index('idx_deleted_at').on(table.deletedAt), // For filtering soft deleted services
     // Add unique constraint for upsert operation
     unqServiceIdentifier: unique('unq_service_identifier').on(table.externalRepoId, table.manifestPath),
   };

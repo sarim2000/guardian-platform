@@ -40,14 +40,6 @@ export function MobileNavbar({ children }: { children: React.ReactNode }) {
               <UnstyledButton
                 className={classes.control}
                 onClick={() => {
-                  router.push('/catalog')
-                }}
-              >
-                Catalog
-              </UnstyledButton>
-              <UnstyledButton
-                className={classes.control}
-                onClick={() => {
                   router.push('/aws-resources')
                 }}
               >

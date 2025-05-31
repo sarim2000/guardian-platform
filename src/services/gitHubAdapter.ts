@@ -4,10 +4,10 @@ import { Octokit } from '@octokit/rest';
 import yaml from 'js-yaml';
 import { services } from '@/db/schema/service';
 import { db } from '@/db';
+import { eq, and, isNull } from 'drizzle-orm';
 import {
   BasicRepoInfo,
   IGitProviderAdapter,
-  GuardianRepositoryMap,
   GuardianManifest
 } from '@/types/guardian';
 
@@ -33,6 +33,10 @@ export class GitHubAdapter implements IGitProviderAdapter {
 
   get provider(): string {
     return this.gitProvider;
+  }
+
+  get client(): Octokit {
+    return this.octokit;
   }
 
   /**
@@ -138,82 +142,126 @@ export interface IngestionResult {
   status: 'success' | 'error' | 'skipped';
   error?: string;
   services?: string[]; // List of service names that were processed
+  deletedServices?: string[]; // List of service names that were soft deleted
 }
 
 export async function monorepoIngestionLogic(githubAdapter: GitHubAdapter, repo: BasicRepoInfo): Promise<IngestionResult> {
-  const MONOREPO_CONFIG_FILENAME = 'guardian-repository.yml';
-  const STANDARD_MANIFEST_FILENAME = 'guardian-manifest.yml';
+  const GUARDIAN_FOLDER = '.guardian';
   let manifestsToProcess: Array<{ repoName: string, filePath: string, content: string }> = [];
   const processedServices: string[] = [];
+  const deletedServiceNames: string[] = [];
+  const currentManifestPaths: string[] = [];
 
   console.info(`Processing repository: ${repo.fullName}`);
 
   try {
-    const monorepoConfigContent = await githubAdapter.getFileContent(
+    // Try to get the contents of the .guardian folder
+    const guardianFolderContent = await githubAdapter.getFileContent(
       repo.fullName,
-      MONOREPO_CONFIG_FILENAME
+      GUARDIAN_FOLDER
     );
 
-    if (monorepoConfigContent) {
-      console.info(`Found ${MONOREPO_CONFIG_FILENAME} in ${repo.fullName}. Parsing for sub-manifests.`);
-      try {
-        const parsedConfig = yaml.load(monorepoConfigContent) as GuardianRepositoryMap;
-        if (parsedConfig && parsedConfig.spec && parsedConfig.spec.serviceManifests) {
-          for (const manifestEntry of parsedConfig.spec.serviceManifests) {
-            if (manifestEntry.path) {
-              console.info(`Fetching sub-manifest: ${manifestEntry.path} from ${repo.fullName}`);
-              const subManifestContent = await githubAdapter.getFileContent(
-                repo.fullName,
-                manifestEntry.path
-              );
-              if (subManifestContent) {
-                console.info(`Successfully fetched sub-manifest: ${manifestEntry.path}`);
-                manifestsToProcess.push({
-                  repoName: repo.fullName,
-                  filePath: manifestEntry.path,
-                  content: subManifestContent
-                });
-              } else {
-                console.warn(`Could not fetch sub-manifest: ${manifestEntry.path} from ${repo.fullName}`);
-              }
-            }
-          }
-        } else {
-          console.warn(`Invalid or empty ${MONOREPO_CONFIG_FILENAME} structure in ${repo.fullName}.`);
+    // If .guardian folder doesn't exist or is empty, check if it's a directory
+    // We need to use the GitHub API to list directory contents
+    try {
+      const { data } = await githubAdapter.client.repos.getContent({
+        owner: repo.fullName.split('/')[0],
+        repo: repo.fullName.split('/')[1],
+        path: GUARDIAN_FOLDER,
+      });
+
+      if (Array.isArray(data)) {
+        // Filter for .yml and .yaml files
+        const yamlFiles = data.filter(file => 
+          file.type === 'file' && 
+          (file.name.endsWith('.yml') || file.name.endsWith('.yaml'))
+        );
+
+        if (yamlFiles.length === 0) {
+          console.warn(`No YAML files found in ${GUARDIAN_FOLDER} folder in ${repo.fullName}`);
+          
+          // Soft delete all services for this repo since .guardian folder exists but has no YAML files
+          await db.update(services)
+            .set({ 
+              deletedAt: new Date(),
+              updatedAt: new Date()
+            })
+            .where(and(
+              eq(services.externalRepoId, repo.externalId),
+              isNull(services.deletedAt)
+            ));
+          
+          return {
+            repository: repo.fullName,
+            status: 'success',
+            error: 'No YAML files found in .guardian folder - marked all services as deleted'
+          };
         }
-      } catch (e: any) {
-        console.error(`Error parsing ${MONOREPO_CONFIG_FILENAME} from ${repo.fullName}: ${e.message}`);
-        return {
-          repository: repo.fullName,
-          status: 'error',
-          error: `Error parsing ${MONOREPO_CONFIG_FILENAME}: ${e.message}`
-        };
-      }
-    } else {
-      console.info(`No ${MONOREPO_CONFIG_FILENAME} found in ${repo.fullName}. Checking for root ${STANDARD_MANIFEST_FILENAME}.`);
-      const rootManifestContent = await githubAdapter.getFileContent(
-        repo.fullName,
-        STANDARD_MANIFEST_FILENAME
-      );
-      if (rootManifestContent) {
-        console.info(`Found root ${STANDARD_MANIFEST_FILENAME} in ${repo.fullName}`);
-        manifestsToProcess.push({
-          repoName: repo.fullName,
-          filePath: STANDARD_MANIFEST_FILENAME,
-          content: rootManifestContent
-        });
+
+        console.info(`Found ${yamlFiles.length} YAML file(s) in ${GUARDIAN_FOLDER} folder in ${repo.fullName}`);
+
+        // Fetch content for each YAML file
+        for (const file of yamlFiles) {
+          const filePath = `${GUARDIAN_FOLDER}/${file.name}`;
+          currentManifestPaths.push(filePath);
+          console.info(`Fetching service manifest: ${filePath} from ${repo.fullName}`);
+          
+          const fileContent = await githubAdapter.getFileContent(
+            repo.fullName,
+            filePath
+          );
+          
+          if (fileContent) {
+            console.info(`Successfully fetched service manifest: ${filePath}`);
+            manifestsToProcess.push({
+              repoName: repo.fullName,
+              filePath: filePath,
+              content: fileContent
+            });
+          } else {
+            console.warn(`Could not fetch service manifest: ${filePath} from ${repo.fullName}`);
+          }
+        }
       } else {
-        console.warn(`No manifest files found (neither ${MONOREPO_CONFIG_FILENAME} nor root ${STANDARD_MANIFEST_FILENAME}) in ${repo.fullName}`);
+        console.warn(`${GUARDIAN_FOLDER} exists but is not a directory in ${repo.fullName}`);
         return {
           repository: repo.fullName,
           status: 'skipped',
-          error: 'No manifest files found'
+          error: '.guardian exists but is not a directory'
+        };
+      }
+    } catch (error: any) {
+      if (error.status === 404) {
+        console.warn(`No ${GUARDIAN_FOLDER} folder found in ${repo.fullName}`);
+        
+        // Soft delete all services for this repo since .guardian folder doesn't exist
+        const deletedCount = await db.update(services)
+          .set({ 
+            deletedAt: new Date(),
+            updatedAt: new Date()
+          })
+          .where(and(
+            eq(services.externalRepoId, repo.externalId),
+            isNull(services.deletedAt)
+          ));
+        
+        return {
+          repository: repo.fullName,
+          status: 'success',
+          error: 'No .guardian folder found - marked all services as deleted'
+        };
+      } else {
+        console.error(`Error accessing ${GUARDIAN_FOLDER} folder in ${repo.fullName}: ${error.message}`);
+        return {
+          repository: repo.fullName,
+          status: 'error',
+          error: `Error accessing .guardian folder: ${error.message}`
         };
       }
     }
 
     if (manifestsToProcess.length > 0) {
-      console.info(`Found ${manifestsToProcess.length} manifest(s) to process for repo ${repo.fullName}:`);
+      console.info(`Found ${manifestsToProcess.length} service manifest(s) to process for repo ${repo.fullName}:`);
       
       for (const manifest of manifestsToProcess) {
         try {
@@ -259,8 +307,9 @@ export async function monorepoIngestionLogic(githubAdapter: GitHubAdapter, repo:
             // Store the complete manifest for reference
             rawManifestData: parsedManifest,
             
-            // Set timestamps
+            // Set timestamps and ensure not deleted
             lastIngestedAt: new Date(),
+            deletedAt: null, // Ensure service is marked as not deleted
           };
 
           // Upsert the service data
@@ -285,20 +334,59 @@ export async function monorepoIngestionLogic(githubAdapter: GitHubAdapter, repo:
           };
         }
       }
+
+      // Soft delete services that are no longer present in the repository
+      console.info(`Checking for services to soft delete in ${repo.fullName}`);
+      
+      // Get all existing services for this repo that are not already deleted
+      const existingServices = await db.select({
+        manifestPath: services.manifestPath,
+        serviceName: services.serviceName
+      })
+      .from(services)
+      .where(and(
+        eq(services.externalRepoId, repo.externalId),
+        isNull(services.deletedAt)
+      ));
+
+      // Find services that exist in DB but not in current manifests
+      const servicesToDelete = existingServices.filter(
+        existingService => !currentManifestPaths.includes(existingService.manifestPath)
+      );
+
+      if (servicesToDelete.length > 0) {
+        console.info(`Soft deleting ${servicesToDelete.length} service(s) that are no longer present in ${repo.fullName}`);
+        
+        for (const serviceToDelete of servicesToDelete) {
+          await db.update(services)
+            .set({ 
+              deletedAt: new Date(),
+              updatedAt: new Date()
+            })
+            .where(and(
+              eq(services.externalRepoId, repo.externalId),
+              eq(services.manifestPath, serviceToDelete.manifestPath)
+            ));
+          
+          deletedServiceNames.push(serviceToDelete.serviceName);
+          console.info(`Soft deleted service: ${serviceToDelete.serviceName} (${serviceToDelete.manifestPath})`);
+        }
+      }
     }
 
-    // Only return success if we actually processed some services
-    if (processedServices.length > 0) {
+    // Return success with information about processed and deleted services
+    if (processedServices.length > 0 || deletedServiceNames.length > 0) {
       return {
         repository: repo.fullName,
         status: 'success',
-        services: processedServices
+        services: processedServices,
+        deletedServices: deletedServiceNames.length > 0 ? deletedServiceNames : undefined
       };
     } else {
       return {
         repository: repo.fullName,
         status: 'skipped',
-        error: 'No valid service manifests found'
+        error: 'No valid service manifests found in .guardian folder'
       };
     }
 
