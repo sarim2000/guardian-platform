@@ -2,7 +2,6 @@
 
 import { Octokit } from '@octokit/rest';
 import yaml from 'js-yaml';
-import dotenv from 'dotenv';
 import { services } from '@/db/schema/service';
 import { db } from '@/db';
 import {
@@ -12,17 +11,12 @@ import {
   GuardianManifest
 } from '@/types/guardian';
 
-// Configure dotenv. Note: Path is relative to this file's location.
-// It's often better to manage .env loading at the application root.
-dotenv.config({
-  path: '../../.env.local', // Assuming .env.local is two levels up from this file's directory
-});
-
 export class GitHubAdapter implements IGitProviderAdapter {
   private octokit: Octokit;
   private organizationName: string;
+  private gitProvider: string;
 
-  constructor(pat: string, organizationName: string) {
+  constructor(pat: string, organizationName: string, gitProvider: string = 'github') {
     if (!pat) {
       console.error('GitHub PAT is required for GitHubAdapter.');
       throw new Error('GitHub PAT is required for GitHubAdapter.');
@@ -33,7 +27,12 @@ export class GitHubAdapter implements IGitProviderAdapter {
     }
     this.octokit = new Octokit({ auth: pat });
     this.organizationName = organizationName;
+    this.gitProvider = gitProvider;
     console.info(`GitHubAdapter initialized for organization: ${this.organizationName}`);
+  }
+
+  get provider(): string {
+    return this.gitProvider;
   }
 
   /**
@@ -46,26 +45,25 @@ export class GitHubAdapter implements IGitProviderAdapter {
     try {
       // Use the repos.listForAuthenticatedUser endpoint which works with PAT
       const repos = await this.octokit.paginate(this.octokit.repos.listForAuthenticatedUser, {
-        per_page: 5,
+        per_page: 100,
         sort: 'updated',
         direction: 'desc',
-
       });
 
-      // // Filter repos for the specified organization
-      // const orgRepos = repos.filter(repo => {
-      //   const [owner] = repo.full_name.split('/');
-      //   return owner.toLowerCase() === this.organizationName.toLowerCase();
-      // });
+      // Filter repos for the specified organization
+      const orgRepos = repos.filter(repo => {
+        const [owner] = repo.full_name.split('/');
+        return owner.toLowerCase() === this.organizationName.toLowerCase();
+      });
 
-      console.info(`Fetched ${repos.length} repositories for ${this.organizationName}.`);
+      console.info(`Fetched ${orgRepos.length} repositories for ${this.organizationName}.`);
 
       // Filter out archived repositories
-      // const activeRepos = orgRepos.filter(repo => !repo.archived);
+      const activeRepos = orgRepos.filter(repo => !repo.archived);
 
-      console.info(`Fetched ${repos.length} accessible and active repositories for ${this.organizationName}.`);
+      console.info(`Fetched ${activeRepos.length} accessible and active repositories for ${this.organizationName}.`);
 
-      return repos.map(repo => ({
+      return activeRepos.map(repo => ({
         name: repo.name,
         fullName: repo.full_name,
         externalId: repo.id.toString(),
@@ -221,15 +219,21 @@ export async function monorepoIngestionLogic(githubAdapter: GitHubAdapter, repo:
         try {
           const parsedManifest = yaml.load(manifest.content) as GuardianManifest;
           
-          if (parsedManifest.kind !== 'Service') {
+          if (parsedManifest?.kind !== 'Service') {
             console.warn(`Skipping manifest ${manifest.filePath} as it's not a Service kind`);
+            continue;
+          }
+
+          // Validate required fields
+          if (!parsedManifest.metadata?.name || !parsedManifest.spec?.owner?.team || !parsedManifest.spec?.lifecycle) {
+            console.warn(`Skipping manifest ${manifest.filePath} due to missing required fields`);
             continue;
           }
 
           // Prepare the service data according to our schema
           const serviceData = {
             externalRepoId: repo.externalId,
-            gitProvider: 'github', // This could be made configurable
+            gitProvider: githubAdapter.provider,
             organizationName: repo.fullName.split('/')[0],
             repositoryName: repo.name,
             manifestPath: manifest.filePath,
@@ -306,35 +310,3 @@ export async function monorepoIngestionLogic(githubAdapter: GitHubAdapter, repo:
     };
   }
 }
-
-
-// async function mainExample() {
-//   const pat = process.env.GIT_PROVIDER_PAT;
-//   const orgName = process.env.GIT_PROVIDER_ORGANIZATION_NAME;
-
-//   if (!pat || !orgName) {
-//     console.error("Missing GIT_PROVIDER_PAT or GIT_PROVIDER_ORGANIZATION_NAME in environment variables.");
-//     return;
-//   }
-
-//   const githubAdapter = new GitHubAdapter(pat, orgName);
-
-//   try {
-//     const repos = await githubAdapter.listRepositories();
-//     // console.info(`Found ${repos.length} total repositories in ${orgName} that PAT has access to.`);
-//     // The previous log message is now part of listRepositories itself.
-
-//     for (const repo of repos) {
-//       await exampleMonorepoIngestionLogic(githubAdapter, repo);
-//       console.info('-----------------------------------------------------');
-//     }
-
-//   } catch (error) {
-//     console.error("Error during main example execution:", error);
-//   }
-// }
-
-// // IIFE to run the async mainExample
-// (async () => {
-//   await mainExample();
-// })();
