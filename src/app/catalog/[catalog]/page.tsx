@@ -122,7 +122,7 @@ export default function CatalogPage() {
   }
 
   return (
-    <Container>
+    <Container size="xl" py="md">
       <Stack>
         <Breadcrumbs>{breadcrumbItems}</Breadcrumbs>
 
