@@ -5,6 +5,9 @@ import env from '@/utils/env';
 export const db = drizzle({
   connection: {
     url: env.DATABASE_URL,
+    ssl: {
+      rejectUnauthorized: false,
+    },
   }
 });
 
