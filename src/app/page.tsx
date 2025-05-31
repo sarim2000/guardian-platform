@@ -96,7 +96,7 @@ export default function HomePage() {
   }
 
   return (
-    <Container>
+    <Container size="xl" py="md">
       <Stack>
         <Title order={1}>Service Catalogs</Title>
         <Text c="dimmed" size="lg">
@@ -105,26 +105,15 @@ export default function HomePage() {
 
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
           {catalogs.map((catalog) => (
-            <Link 
-              key={catalog.name} 
+            <Link
+              key={catalog.name}
               href={`/catalog/${encodeURIComponent(catalog.name)}`}
               style={{ textDecoration: 'none' }}
             >
-              <Card 
-                shadow="sm" 
-                padding="lg" 
-                radius="md" 
-                withBorder
-                h={180}
-              >
+              <Card shadow="sm" padding="lg" radius="md" withBorder h={180}>
                 <Stack h="100%" justify="space-between">
                   <Group>
-                    <ThemeIcon 
-                      size={rem(40)} 
-                      radius="md" 
-                      variant="light" 
-                      color="blue"
-                    >
+                    <ThemeIcon size={rem(40)} radius="md" variant="light" color="blue">
                       <IconApps size={rem(24)} />
                     </ThemeIcon>
                     <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
@@ -149,5 +138,5 @@ export default function HomePage() {
         </SimpleGrid>
       </Stack>
     </Container>
-  );
+  )
 }
