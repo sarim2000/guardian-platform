@@ -38,6 +38,7 @@ export function DependencyGraph({ services }: DependencyGraphProps) {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   const processedNodes = new Set<string>();
+  let globalDepIndex = 0; // Global counter for dependency positioning
 
   // Add all services as nodes first
   services.forEach((service, serviceIndex) => {
@@ -45,7 +46,7 @@ export function DependencyGraph({ services }: DependencyGraphProps) {
       nodes.push({
         id: service.serviceName,
         data: { label: service.displayName || service.serviceName },
-        position: { x: 250, y: 100 + (serviceIndex * 100) },
+        position: { x: 100, y: 100 + (serviceIndex * 150) },
         style: {
           background: '#228be6',
           color: 'white',
@@ -62,7 +63,7 @@ export function DependencyGraph({ services }: DependencyGraphProps) {
 
     // Add dependencies as nodes and create edges
     if (service.dependencies) {
-      service.dependencies.forEach((dep, depIndex) => {
+      service.dependencies.forEach((dep) => {
         if (!processedNodes.has(dep.name)) {
           nodes.push({
             id: dep.name,
@@ -71,8 +72,8 @@ export function DependencyGraph({ services }: DependencyGraphProps) {
               relationship: dep.relationship,
             },
             position: { 
-              x: 600,
-              y: 100 + (depIndex * 80)
+              x: 400,
+              y: 100 + (globalDepIndex * 120) // Use global index
             },
             style: {
               background: dep.critical ? '#fa5252' : '#40c057',
@@ -86,6 +87,7 @@ export function DependencyGraph({ services }: DependencyGraphProps) {
             targetPosition: Position.Left,
           });
           processedNodes.add(dep.name);
+          globalDepIndex++; // Increment global counter
         }
 
         edges.push({
@@ -100,6 +102,9 @@ export function DependencyGraph({ services }: DependencyGraphProps) {
       });
     }
   });
+
+  console.log('Fixed nodes:', nodes);
+  console.log('Fixed edges:', edges);
 
   return (
     <Card shadow="sm" padding="lg" radius="md" withBorder>
