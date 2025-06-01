@@ -40,6 +40,14 @@ export function MobileNavbar({ children }: { children: React.ReactNode }) {
               <UnstyledButton
                 className={classes.control}
                 onClick={() => {
+                  router.push('/onboarding')
+                }}
+              >
+                Onboarding
+              </UnstyledButton>
+              <UnstyledButton
+                className={classes.control}
+                onClick={() => {
                   router.push('/aws-resources')
                 }}
               >
@@ -76,6 +84,15 @@ export function MobileNavbar({ children }: { children: React.ReactNode }) {
           }}
         >
           Catalog
+        </UnstyledButton>
+        <UnstyledButton 
+          className={classes.control}
+          onClick={() => {
+            router.push('/onboarding')
+            toggle()
+          }}
+        >
+          Onboarding
         </UnstyledButton>
         <UnstyledButton 
           className={classes.control}

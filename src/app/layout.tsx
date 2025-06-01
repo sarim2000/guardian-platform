@@ -10,8 +10,8 @@ import { mantineTheme } from '@/themes/theme'
 import { Lato } from "next/font/google"
 
 export const metadata = {
-  title: 'My Mantine app',
-  description: 'I have followed setup instructions carefully',
+  title: 'Guardian',
+  description: 'Guardian is a platform for managing and monitoring services.',
 }
 
 const lato = Lato({
