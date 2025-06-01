@@ -15,7 +15,7 @@ import {
   rem,
   Anchor,
 } from '@mantine/core';
-import { IconAlertCircle, IconApps, IconArrowRight } from '@tabler/icons-react';
+import { IconAlertCircle, IconApps, IconArrowRight, IconInfoCircle } from '@tabler/icons-react';
 import Link from 'next/link';
 
 interface Service {
@@ -98,6 +98,15 @@ export default function HomePage() {
   return (
     <Container size="xl" py="md">
       <Stack>
+        {/* Onboarding Instructions - only show if no catalogs exist */}
+        {catalogs.length === 0 && (
+          <Alert icon={<IconInfoCircle size={16} />} title="New to Guardian?" color="blue">
+            <Text size="sm">
+              Get started by reading our <Anchor component={Link} href="/onboarding">onboarding guide</Anchor> to learn how to register your services with Guardian using <code>.guardian</code> manifests.
+            </Text>
+          </Alert>
+        )}
+
         <Title order={1}>Service Catalogs</Title>
         <Text c="dimmed" size="lg">
           Browse our service catalogs to discover and learn about our various systems and platforms.
