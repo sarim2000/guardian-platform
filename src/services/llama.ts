@@ -118,7 +118,7 @@ export class LlamaService {
   /**
    * Creates a chat engine for querying the ingested documents
    */
-  async createChatEngine(repoName: string, organizationName: string) {
+  async createChatEngine(repoName: string, organizationName: string, serviceName: string) {
     try {
       const pgvs = new PGVectorStore({ clientConfig: { connectionString: env.DATABASE_URL } });
 
@@ -130,7 +130,7 @@ export class LlamaService {
 
 
       const retriever = index.asRetriever({
-        similarityTopK: 1,
+        similarityTopK: 5,
         filters: {
           filters: [
             {
@@ -142,13 +142,13 @@ export class LlamaService {
               key: "organizationName",
               operator: FilterOperator.EQ,
               value: organizationName,
-            }
+            },
           ]
         }
       });
       
       const chatEngine = index.asChatEngine({
-        similarityTopK: 5,
+        retriever: retriever,
       });
 
       return chatEngine;

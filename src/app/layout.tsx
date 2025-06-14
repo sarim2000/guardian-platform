@@ -19,7 +19,13 @@ const lato = Lato({
   weight: ['400', '700'],
 })
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ 
+  children,
+  chat,
+}: { 
+  children: React.ReactNode,
+  chat: React.ReactNode,
+}) {
   return (
     <html lang="en" {...mantineHtmlProps}>
       <head>
@@ -28,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={lato.className}>
         <MantineProvider defaultColorScheme="dark" theme={mantineTheme}>
           <MobileNavbar>{children}</MobileNavbar>
+          {chat}
         </MantineProvider>
       </body>
     </html>

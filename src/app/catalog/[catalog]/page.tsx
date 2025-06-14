@@ -31,8 +31,6 @@ export default function CatalogPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ingesting, setIngesting] = useState<string | null>(null);
-  const [chatModalOpen, setChatModalOpen] = useState(false);
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
 
   useEffect(() => {
     fetchServices();
@@ -78,11 +76,6 @@ export default function CatalogPage() {
     } finally {
       setIngesting(null);
     }
-  };
-
-  const handleOpenChat = (service: Service) => {
-    setSelectedService(service);
-    setChatModalOpen(true);
   };
 
   const getLifecycleColor = (lifecycle: string) => {
@@ -227,12 +220,13 @@ export default function CatalogPage() {
                     </Box>
 
                     <Button
+                      component={Link}
+                      href={`/chat?org=${service.organizationName}&repo=${service.repositoryName}&service=${service.serviceName}`}
                       variant="filled"
                       color="violet"
                       size="sm"
                       fullWidth
                       leftSection={<IconMessageCircle size={16} />}
-                      onClick={() => handleOpenChat(service)}
                       fw={500}
                       style={{
                         boxShadow: '0 2px 8px rgba(139, 69, 255, 0.3)',
@@ -264,12 +258,6 @@ export default function CatalogPage() {
             </Grid.Col>
           ))}
         </Grid>
-
-        <ChatModal
-          opened={chatModalOpen}
-          onClose={() => setChatModalOpen(false)}
-          service={selectedService}
-        />
       </Stack>
     </Container>
   );
