@@ -3,9 +3,9 @@ import { LlamaService } from '@/services/llama';
 
 export async function POST(request: Request) {
   try {
-    const { message, messages = [], repoName, organizationName } = await request.json();
+    const { message, messages = [], repoName, organizationName, serviceName } = await request.json();
 
-    if (!message || !repoName || !organizationName) {
+    if (!message || !repoName || !organizationName || !serviceName) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
 
         try {
           llamaService = LlamaService.getInstance(organizationName);
-          chatEngine = await llamaService.createChatEngine(repoName, organizationName);
+          chatEngine = await llamaService.createChatEngine(repoName, organizationName, serviceName);
 
           const response = await chatEngine.chat({
             message: conversationHistory[conversationHistory.length - 1].content,

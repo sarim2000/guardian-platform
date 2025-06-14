@@ -4,6 +4,7 @@ import { type ChatMessage } from '@/types/chat';
 interface Service {
   repositoryName: string;
   organizationName: string;
+  serviceName: string;
 }
 
 interface UseChatStreamProps {
@@ -57,6 +58,7 @@ export function useChatStream({ service, messages, setMessages, setError }: UseC
           })),
           repoName: service.repositoryName,
           organizationName: service.organizationName,
+          serviceName: service.serviceName,
         }),
       });
 
