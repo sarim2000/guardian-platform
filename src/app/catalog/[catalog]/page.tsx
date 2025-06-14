@@ -157,7 +157,7 @@ export default function CatalogPage() {
 
         <Grid>
           {services.map((service) => (
-            <Grid.Col key={service.id} span={{ base: 12, sm: 6, lg: 4 }}>
+            <Grid.Col key={service.id} span={{ base: 12, sm: 6, lg: 6 }}>
               <Card shadow="sm" padding="lg" radius="md" withBorder>
                 <Stack gap="md">
                   <Group justify="space-between">

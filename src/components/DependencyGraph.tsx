@@ -34,79 +34,110 @@ interface DependencyGraphProps {
 }
 
 export function DependencyGraph({ services }: DependencyGraphProps) {
-  // Transform all services and their dependencies into nodes and edges
   const nodes: Node[] = [];
   const edges: Edge[] = [];
-  const processedNodes = new Set<string>();
-  let globalDepIndex = 0; // Global counter for dependency positioning
+  const serviceNodeNames = new Set<string>(services.map(s => s.serviceName));
+  const processedDepNodes = new Set<string>();
+  let globalDepIndex = 0;
 
-  // Add all services as nodes first
+  // 1. First pass: Add all primary services as nodes
   services.forEach((service, serviceIndex) => {
-    if (!processedNodes.has(service.serviceName)) {
-      nodes.push({
-        id: service.serviceName,
-        data: { label: service.displayName || service.serviceName },
-        position: { x: 100, y: 100 + (serviceIndex * 150) },
-        style: {
-          background: '#228be6',
-          color: 'white',
-          border: '1px solid #1c7ed6',
-          borderRadius: '4px',
-          padding: '10px',
-          width: 180,
-        },
-        sourcePosition: Position.Right,
-        targetPosition: Position.Left,
-      });
-      processedNodes.add(service.serviceName);
-    }
+    nodes.push({
+      id: service.serviceName,
+      data: { label: service.displayName || service.serviceName },
+      position: { x: 50, y: 150 + (serviceIndex * 180) },
+      style: {
+        background: 'var(--mantine-color-violet-7)',
+        color: 'white',
+        border: '1px solid var(--mantine-color-violet-9)',
+        borderRadius: '4px',
+        padding: '10px 15px',
+        width: 200,
+      },
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
+    });
+  });
 
-    // Add dependencies as nodes and create edges
+  // 2. Second pass: Add dependencies and relationship nodes
+  services.forEach((service) => {
     if (service.dependencies) {
       service.dependencies.forEach((dep) => {
-        if (!processedNodes.has(dep.name)) {
+        // Create dependency node if it's not a primary service or already processed
+        if (!serviceNodeNames.has(dep.name) && !processedDepNodes.has(dep.name)) {
           nodes.push({
             id: dep.name,
-            data: { 
-              label: dep.name,
-              relationship: dep.relationship,
-            },
+            data: { label: dep.name },
             position: { 
-              x: 400,
-              y: 100 + (globalDepIndex * 120) // Use global index
+              x: 650, // Pushed further right for space
+              y: 150 + (globalDepIndex * 100) 
             },
             style: {
-              background: dep.critical ? '#fa5252' : '#40c057',
+              background: 'var(--mantine-color-gray-7)',
               color: 'white',
-              border: `1px solid ${dep.critical ? '#e03131' : '#37b24d'}`,
+              border: `1px solid var(--mantine-color-gray-8)`,
               borderRadius: '4px',
-              padding: '10px',
-              width: 180,
+              padding: '10px 15px',
+              width: 200,
             },
             sourcePosition: Position.Right,
             targetPosition: Position.Left,
           });
-          processedNodes.add(dep.name);
-          globalDepIndex++; // Increment global counter
+          processedDepNodes.add(dep.name);
+          globalDepIndex++;
         }
 
+        const sourceNode = nodes.find(n => n.id === service.serviceName)!;
+        const targetNode = nodes.find(n => n.id === dep.name)!;
+        
+        if (!targetNode) return;
+
+        const relationshipNodeId = `${sourceNode.id}-${targetNode.id}-rel`;
+
+        // Add the relationship "box" node in the middle
+        nodes.push({
+          id: relationshipNodeId,
+          data: { label: dep.relationship },
+          position: {
+            x: (sourceNode.position.x + targetNode.position.x) / 2,
+            y: (sourceNode.position.y + targetNode.position.y) / 2,
+          },
+          style: {
+            background: dep.critical ? 'var(--mantine-color-red-8)' : 'var(--mantine-color-dark-6)',
+            color: 'white',
+            border: `1px solid ${dep.critical ? 'var(--mantine-color-red-9)' : 'var(--mantine-color-dark-4)'}`,
+            borderRadius: '4px',
+            padding: '5px 10px',
+            fontSize: '11px',
+            textAlign: 'center',
+          },
+          sourcePosition: Position.Right,
+          targetPosition: Position.Left,
+        });
+        
+        // Edge from source to relationship
         edges.push({
-          id: `${service.serviceName}-${dep.name}`,
-          source: service.serviceName,
-          target: dep.name,
-          label: dep.relationship,
-          style: { stroke: dep.critical ? '#fa5252' : '#228be6' },
-          labelStyle: { fill: '#868e96', fontSize: 12 },
+          id: `${sourceNode.id}-${relationshipNodeId}`,
+          source: sourceNode.id,
+          target: relationshipNodeId,
+          style: { stroke: 'var(--mantine-color-gray-6)' },
+        });
+
+        // Edge from relationship to target
+        edges.push({
+          id: `${relationshipNodeId}-${targetNode.id}`,
+          source: relationshipNodeId,
+          target: targetNode.id,
+          style: { stroke: 'var(--mantine-color-gray-6)' },
           animated: dep.critical,
         });
       });
     }
   });
 
-
   return (
     <Card shadow="sm" padding="lg" radius="md" withBorder>
-      <div style={{ height: Math.max(600, nodes.length * 70) }}>
+      <div style={{ height: Math.max(800, nodes.length * 70) }}>
         <ReactFlow
           nodes={nodes}
           edges={edges}

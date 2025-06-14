@@ -22,10 +22,10 @@ export async function POST(request: Request) {
 
       Format requirements:
       - Use semantic HTML tags appropriately (<h1> for main headings, <h2> for subheadings, <p> for paragraphs, etc.)
-      - For code examples, wrap them in <pre><code>code here</code></pre>
+      - For code blocks, wrap them in <pre><code>code here</code></pre> or <pre><code class="language-javascript">code here</code></pre> for syntax highlighting
+      - For inline code, use <code>code here</code> tags
       - For lists, use <ul>/<ol> with <li> items
       - For emphasis, use <strong> or <em> tags
-      - For technical terms, wrap them in <code> tags
       - Tables should use proper <table>, <tr>, <td> structure
       - Use mantine components for styling.
       - No new line characters.
