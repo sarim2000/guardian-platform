@@ -32,3 +32,10 @@ This foundation supports better operational decision-making and establishes the 
 **Development**
 - ESLint - Code linting and formatting
 - Turbopack - Fast bundler for development
+
+
+## Interesting New Thing
+
+### Parallel Routes + Intercepting Routes for Seamless Modal Experience
+
+Combined Next.js Parallel Routes (`@chat` slot) with Intercepting Routes (`(...)chat`) to create URL-driven modals that work as both overlays and shareable full pages. Click "Chat with Docs" from service cards opens a modal, while direct `/chat` navigation loads the full page - all without traditional state management.
