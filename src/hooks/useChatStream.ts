@@ -107,7 +107,6 @@ export function useChatStream({ service, messages, setMessages, setError }: UseC
           if (value) {
             hasReceivedData = true;
             incomingMessage += value;
-            console.log(incomingMessage);
             // Update the assistant message in real-time
             setMessages(prev => 
               prev.map(msg => 

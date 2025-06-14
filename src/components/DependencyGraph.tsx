@@ -103,8 +103,6 @@ export function DependencyGraph({ services }: DependencyGraphProps) {
     }
   });
 
-  console.log('Fixed nodes:', nodes);
-  console.log('Fixed edges:', edges);
 
   return (
     <Card shadow="sm" padding="lg" radius="md" withBorder>

@@ -10,10 +10,6 @@ export async function POST(request: NextRequest) {
     const privateKey = env.GITHUB_APP_PRIVATE_KEY;
     const installationId = env.GITHUB_APP_INSTALLATION_ID;
 
-    console.log('appId', appId);
-    console.log('privateKey', privateKey);
-    console.log('installationId', installationId);
-
     if (!appId || !privateKey || !installationId) {
       return NextResponse.json(
         { error: 'Missing required GitHub App credentials' },
