@@ -42,15 +42,15 @@ export function MobileNavbar({ children }: { children: React.ReactNode }) {
             </Group>
             <Group ml="xl" gap={0} visibleFrom="sm">
               {desktopNavItems.map((item) => (
-                <UnstyledButton
+              <UnstyledButton
                   key={item.href}
-                  className={classes.control}
-                  onClick={() => {
+                className={classes.control}
+                onClick={() => {
                     router.push(item.href)
-                  }}
-                >
+                }}
+              >
                   {item.label}
-                </UnstyledButton>
+              </UnstyledButton>
               ))}
             </Group>
           </Group>
@@ -59,16 +59,16 @@ export function MobileNavbar({ children }: { children: React.ReactNode }) {
 
       <AppShell.Navbar py="md" px={4}>
         {mobileNavItems.map((item) => (
-          <UnstyledButton 
+        <UnstyledButton 
             key={item.href}
-            className={classes.control}
-            onClick={() => {
+          className={classes.control}
+          onClick={() => {
               router.push(item.href)
-              toggle()
-            }}
-          >
+            toggle()
+          }}
+        >
             {item.label}
-          </UnstyledButton>
+        </UnstyledButton>
         ))}
       </AppShell.Navbar>
 

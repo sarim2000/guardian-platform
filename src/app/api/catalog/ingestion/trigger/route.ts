@@ -6,17 +6,26 @@ import { monorepoIngestionLogic } from '@/services/gitHubAdapter';
 // POST /api/catalog/ingestion/trigger - endpoint for triggering the catalog ingestion process to db
 export async function POST(request: NextRequest) {
   try {
-    const pat = env.GIT_PROVIDER_PAT;
-    const orgName = env.GIT_PROVIDER_ORGANIZATION_NAME;
+    const appId = env.GITHUB_APP_ID;
+    const privateKey = env.GITHUB_APP_PRIVATE_KEY;
+    const installationId = env.GITHUB_APP_INSTALLATION_ID;
 
-    if (!pat || !orgName) {
+    console.log('appId', appId);
+    console.log('privateKey', privateKey);
+    console.log('installationId', installationId);
+
+    if (!appId || !privateKey || !installationId) {
       return NextResponse.json(
-        { error: 'Missing required environment variables' },
+        { error: 'Missing required GitHub App credentials' },
         { status: 500 }
       );
     }
 
-    const githubAdapter = new GitHubAdapter(pat, orgName);
+    const githubAdapter = GitHubAdapter.getInstance(
+      appId,
+      privateKey,
+      installationId
+    );
 
     const repos = await githubAdapter.listRepositories();
     

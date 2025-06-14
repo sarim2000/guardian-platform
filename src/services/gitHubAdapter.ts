@@ -1,6 +1,7 @@
 // services/gitHubAdapter.ts
 
 import { Octokit } from '@octokit/rest';
+import { createAppAuth } from '@octokit/auth-app';
 import yaml from 'js-yaml';
 import { services } from '@/db/schema/service';
 import { db } from '@/db';
@@ -12,23 +13,66 @@ import {
 } from '@/types/guardian';
 
 export class GitHubAdapter implements IGitProviderAdapter {
+  private static instance: GitHubAdapter;
   private octokit: Octokit;
-  private organizationName: string;
   private gitProvider: string;
+  private appId: string;
+  private privateKey: string;
+  private installationId: string;
 
-  constructor(pat: string, organizationName: string, gitProvider: string = 'github') {
-    if (!pat) {
-      console.error('GitHub PAT is required for GitHubAdapter.');
-      throw new Error('GitHub PAT is required for GitHubAdapter.');
+  private constructor(
+    appId: string,
+    privateKey: string,
+    installationId: string,
+    gitProvider: string = 'github'
+  ) {
+    if (!appId || !privateKey || !installationId) {
+      console.error('GitHub App credentials are required for GitHubAdapter.');
+      throw new Error('GitHub App credentials are required for GitHubAdapter.');
     }
-    if (!organizationName) {
-      console.error('GitHub organization name is required for GitHubAdapter.');
-      throw new Error('GitHub organization name is required for GitHubAdapter.');
-    }
-    this.octokit = new Octokit({ auth: pat });
-    this.organizationName = organizationName;
+
+    this.appId = appId;
+    this.privateKey = privateKey;
+    this.installationId = installationId;
     this.gitProvider = gitProvider;
-    console.info(`GitHubAdapter initialized for organization: ${this.organizationName}`);
+
+    // Initialize Octokit with GitHub App authentication
+    this.octokit = new Octokit({
+      authStrategy: createAppAuth,
+      auth: {
+        appId: this.appId,
+        privateKey: this.privateKey,
+        installationId: this.installationId,
+      },
+    });
+
+    console.info('GitHubAdapter initialized');
+  }
+
+  public static getInstance(
+    appId: string,
+    privateKey: string,
+    installationId: string,
+    gitProvider: string = 'github'
+  ): GitHubAdapter {
+    if (!GitHubAdapter.instance) {
+      GitHubAdapter.instance = new GitHubAdapter(appId, privateKey, installationId, gitProvider);
+    }
+    return GitHubAdapter.instance;
+  }
+
+  /**
+   * Lists all installations for the GitHub App
+   * This is useful for debugging to find the correct installation ID
+   */
+  async listInstallations(): Promise<any> {
+    try {
+      const response = await this.octokit.apps.listInstallations();
+      return response.data;
+    } catch (error: any) {
+      console.error('Error listing installations:', error);
+      throw error;
+    }
   }
 
   get provider(): string {
@@ -40,34 +84,27 @@ export class GitHubAdapter implements IGitProviderAdapter {
   }
 
   /**
-   * Lists repositories for the configured organization that the authenticated PAT has access to.
+   * Lists repositories that the GitHub App has access to through its installation.
    * Handles pagination automatically by Octokit's paginate method.
-   * GitHub API inherently scopes this to the PAT's permissions within the organization.
    */
   async listRepositories(): Promise<BasicRepoInfo[]> {
-    console.info(`Fetching repositories for organization: ${this.organizationName} (scoped by PAT permissions)`);
+    console.info('Fetching repositories accessible to the GitHub App installation');
     try {
-      // Use the repos.listForAuthenticatedUser endpoint which works with PAT
-      const repos = await this.octokit.paginate(this.octokit.repos.listForAuthenticatedUser, {
+      // Use the apps.listReposAccessibleToInstallation endpoint which works with GitHub App
+      const response = await this.octokit.apps.listReposAccessibleToInstallation({
+        installation_id: this.installationId,
         per_page: 100,
-        sort: 'updated',
-        direction: 'desc',
       });
 
-      // Filter repos for the specified organization
-      const orgRepos = repos.filter(repo => {
-        const [owner] = repo.full_name.split('/');
-        return owner.toLowerCase() === this.organizationName.toLowerCase();
-      });
-
-      console.info(`Fetched ${orgRepos.length} repositories for ${this.organizationName}.`);
+      const repositories = response.data.repositories;
+      console.info(`Fetched ${repositories.length} repositories accessible to the GitHub App.`);
 
       // Filter out archived repositories
-      const activeRepos = orgRepos.filter(repo => !repo.archived);
+      const activeRepos = repositories.filter((repo: any) => !repo.archived);
 
-      console.info(`Fetched ${activeRepos.length} accessible and active repositories for ${this.organizationName}.`);
+      console.info(`Found ${activeRepos.length} active repositories.`);
 
-      return activeRepos.map(repo => ({
+      return activeRepos.map((repo: any) => ({
         name: repo.name,
         fullName: repo.full_name,
         externalId: repo.id.toString(),
@@ -78,17 +115,16 @@ export class GitHubAdapter implements IGitProviderAdapter {
       }));
     } catch (error: any) {
       console.error({
-        message: `GitHub API Error in listRepositories for organization ${this.organizationName}`,
+        message: 'GitHub API Error in listRepositories',
         errorDetails: { message: error.message, status: error.status }
       });
-      // Depending on how critical this is, you might re-throw or return empty array
       throw new Error(`GitHub API Error in listRepositories: ${error.message}`);
     }
   }
 
   /**
-   * Fetches the content of a specific file from a repository within the configured organization.
-   * @param repoName The name of the repository (without the organization part).
+   * Fetches the content of a specific file from a repository.
+   * @param repoName The full name of the repository (e.g., "owner/repo-name").
    * @param filePath The path to the file within the repository.
    * @param ref Optional branch, tag, or commit SHA. Defaults to the repo's default branch if not provided.
    * @returns The file content as a string, or null if the file is not found or an error occurs.
@@ -98,15 +134,13 @@ export class GitHubAdapter implements IGitProviderAdapter {
     filePath: string,
     ref?: string
   ): Promise<string | null> {
-    // Extract owner from repoName if it contains a slash, otherwise use organizationName
-    const owner = repoName.includes('/') ? repoName.split('/')[0] : this.organizationName;
-    // Extract actual repo name if it contains a slash
-    const actualRepoName = repoName.includes('/') ? repoName.split('/')[1] : repoName;
+    // Extract owner and repo name from the full repo name
+    const [owner, actualRepoName] = repoName.split('/');
 
-    console.info(`Fetching file content: ${owner}/${actualRepoName}/${filePath}${ref ? ` (ref: ${ref})` : ''}`);
+    console.info(`Fetching file content: ${repoName}/${filePath}${ref ? ` (ref: ${ref})` : ''}`);
     try {
       const response = await this.octokit.repos.getContent({
-        owner: owner,
+        owner,
         repo: actualRepoName,
         path: filePath,
         ref: ref,
@@ -114,24 +148,68 @@ export class GitHubAdapter implements IGitProviderAdapter {
 
       // Ensure response.data is a file object and has content
       if (Array.isArray(response.data) || !('content' in response.data) || typeof response.data.content !== 'string') {
-        console.warn(`Path ${filePath} in ${owner}/${actualRepoName} is a directory, has no content, or content is not a string.`);
+        console.warn(`Path ${filePath} in ${repoName} is a directory, has no content, or content is not a string.`);
         return null;
       }
 
       const content = Buffer.from(response.data.content, 'base64').toString('utf-8');
-      console.debug(`Successfully fetched content for ${filePath} in ${owner}/${actualRepoName}`);
+      console.debug(`Successfully fetched content for ${filePath} in ${repoName}`);
       return content;
 
     } catch (error: any) {
       if (error.status === 404) {
-        console.warn(`File not found: ${filePath} in ${owner}/${actualRepoName}${ref ? ` (ref: ${ref})` : ''}`);
+        console.warn(`File not found: ${filePath} in ${repoName}${ref ? ` (ref: ${ref})` : ''}`);
         return null; // File not found is a common case, return null
       }
       // For other errors, log and return null to make ingestion resilient
       console.error({
-        message: `Failed to get file content for ${filePath} in ${owner}/${actualRepoName}`,
+        message: `Failed to get file content for ${filePath} in ${repoName}`,
         errorDetails: { message: error.message, status: error.status }
       });
+      return null;
+    }
+  }
+
+  /**
+   * Gets the README content for a repository
+   * Handles both monorepo (org/repo/service) and single-repo (org/repo) cases
+   */
+  async getReadmeContent(organizationName: string, repoPath: string): Promise<string | null> {
+    try {
+      // repoPath can be:
+      // - "mira-network" (single repo)
+      // - "mira-network/router" (monorepo with service)
+      const parts = repoPath.split('/');
+      
+      const repo = parts[0]; // Always the repository name
+      const service = parts.length > 1 ? parts[1] : null; // Service name if monorepo
+      
+      // Construct the path based on whether it's a monorepo or not
+      const path = service ? `${service}/README.md` : 'README.md';
+
+      console.info('Parsed repository details:', {
+        organizationName,
+        repoPath,
+        repo,
+        service,
+        path,
+        isMonorepo: !!service
+      });
+
+      const response = await this.octokit.repos.getContent({
+        owner: organizationName,
+        repo: repo,
+        path,
+      });
+
+      if ('content' in response.data) {
+        // GitHub API returns content in base64
+        return Buffer.from(response.data.content, 'base64').toString();
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error fetching README:', error);
       return null;
     }
   }

@@ -15,35 +15,14 @@ import {
   Alert,
   Breadcrumbs,
   Anchor,
+  Box,
 } from '@mantine/core';
-import { IconAlertCircle, IconExternalLink, IconHome } from '@tabler/icons-react';
+import { IconAlertCircle, IconExternalLink, IconHome, IconBook, IconCheck, IconMessageCircle } from '@tabler/icons-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { DependencyGraph } from '@/components/DependencyGraph';
-
-interface ServiceLink {
-  name: string;
-  url: string;
-}
-
-interface Service {
-  id: string;
-  serviceName: string;
-  displayName?: string;
-  description?: string;
-  ownerTeam: string;
-  lifecycle: string;
-  tier?: string;
-  serviceType?: string;
-  partOf?: string;
-  links?: ServiceLink[];
-  techStack?: string[];
-  dependencies?: Array<{
-    name: string;
-    critical: boolean;
-    relationship: string;
-  }>;
-}
+import { ChatModal } from '@/components/ChatModal';
+import { Service } from '@/types/service';
 
 export default function CatalogPage() {
   const params = useParams();
@@ -51,6 +30,9 @@ export default function CatalogPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [ingesting, setIngesting] = useState<string | null>(null);
+  const [chatModalOpen, setChatModalOpen] = useState(false);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
 
   useEffect(() => {
     fetchServices();
@@ -69,6 +51,38 @@ export default function CatalogPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleIngest = async (service: Service) => {
+    setIngesting(service.id);
+    try {
+      const response = await fetch('/api/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serviceName: service.serviceName,
+          organizationName: service.organizationName,
+          repositoryName: service.repositoryName,
+          manifestPath: service.manifestPath,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to ingest documentation');
+      }
+
+      // Show success message or update UI as needed
+    } catch (error) {
+      console.error('Ingestion error:', error);
+      // Show error message
+    } finally {
+      setIngesting(null);
+    }
+  };
+
+  const handleOpenChat = (service: Service) => {
+    setSelectedService(service);
+    setChatModalOpen(true);
   };
 
   const getLifecycleColor = (lifecycle: string) => {
@@ -135,7 +149,6 @@ export default function CatalogPage() {
           </Stack>
         </Group>
 
-        {/* Show dependency graph only if there are services with dependencies */}
         {services.some(service => service.dependencies && service.dependencies.length > 0) && (
           <DependencyGraph 
             services={services.filter(service => service.dependencies && service.dependencies.length > 0)}
@@ -192,6 +205,43 @@ export default function CatalogPage() {
                     <Text size="sm">{service.ownerTeam}</Text>
                   </Group>
 
+                  <Stack gap="xs">
+                    <Box pt="xs" style={{ borderTop: '1px solid var(--mantine-color-gray-3)' }}>
+                      <Button
+                        variant="gradient"
+                        gradient={{ from: 'blue', to: 'cyan', deg: 45 }}
+                        size="sm"
+                        fullWidth
+                        leftSection={<IconBook size={16} />}
+                        onClick={() => handleIngest(service)}
+                        loading={ingesting === service.id}
+                        fw={600}
+                        style={{
+                          boxShadow: '0 4px 12px rgba(0, 100, 200, 0.3)',
+                          transform: ingesting === service.id ? 'scale(0.98)' : 'scale(1)',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        {ingesting === service.id ? 'Ingesting...' : 'Ingest Documentation'}
+                      </Button>
+                    </Box>
+
+                    <Button
+                      variant="filled"
+                      color="violet"
+                      size="sm"
+                      fullWidth
+                      leftSection={<IconMessageCircle size={16} />}
+                      onClick={() => handleOpenChat(service)}
+                      fw={500}
+                      style={{
+                        boxShadow: '0 2px 8px rgba(139, 69, 255, 0.3)',
+                      }}
+                    >
+                      Chat with Docs
+                    </Button>
+                  </Stack>
+
                   {service.links && service.links.length > 0 && (
                     <Group gap="xs" mt="xs">
                       {service.links.map((link, index) => (
@@ -214,6 +264,12 @@ export default function CatalogPage() {
             </Grid.Col>
           ))}
         </Grid>
+
+        <ChatModal
+          opened={chatModalOpen}
+          onClose={() => setChatModalOpen(false)}
+          service={selectedService}
+        />
       </Stack>
     </Container>
   );
