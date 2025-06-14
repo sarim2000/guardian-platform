@@ -16,8 +16,9 @@ import {
   Breadcrumbs,
   Anchor,
   Box,
+  Accordion,
 } from '@mantine/core';
-import { IconAlertCircle, IconExternalLink, IconHome, IconBook, IconCheck, IconMessageCircle } from '@tabler/icons-react';
+import { IconAlertCircle, IconExternalLink, IconHome, IconBook, IconCheck, IconMessageCircle, IconHierarchy } from '@tabler/icons-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { DependencyGraph } from '@/components/DependencyGraph';
@@ -143,9 +144,18 @@ export default function CatalogPage() {
         </Group>
 
         {services.some(service => service.dependencies && service.dependencies.length > 0) && (
-          <DependencyGraph 
-            services={services.filter(service => service.dependencies && service.dependencies.length > 0)}
-          />
+          <Accordion variant="contained">
+            <Accordion.Item value="dependencies">
+              <Accordion.Control icon={<IconHierarchy size={16} />}>
+                Service Dependencies
+              </Accordion.Control>
+              <Accordion.Panel>
+                <DependencyGraph 
+                  services={services.filter(service => service.dependencies && service.dependencies.length > 0)}
+                />
+              </Accordion.Panel>
+            </Accordion.Item>
+          </Accordion>
         )}
 
         <Grid>
