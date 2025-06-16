@@ -38,10 +38,6 @@ async function sendErrorToWebhook(error: Error, context: {
 
 export async function POST(request: Request) {
   try {
-    // remove after testing
-    const testError = new Error('test for error, this should be removed');
-    throw testError;
-
     const { message, messages = [], repoName, organizationName, serviceName } = await request.json();
 
     // Debug logging to see what's being received
