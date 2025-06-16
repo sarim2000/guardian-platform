@@ -149,7 +149,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Chat API error:', error);
     return NextResponse.json(
-      { error: 'Failed to process chat request' },
+      { error: `Failed to process chat request: ${error instanceof Error ? error.message : 'Unknown error occurred'}` },
       { status: 500 }
     );
   }
