@@ -93,6 +93,7 @@ export async function POST(request: Request) {
             }
           } catch (streamError) {
             console.error('Streaming iteration error:', streamError);
+            
             // Try to send an error message to the client
             try {
               controller.enqueue(encoder.encode('\n\n<p style="color: red;">Error occurred during streaming response.</p>'));

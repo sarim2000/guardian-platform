@@ -147,7 +147,7 @@ export default function CatalogPage() {
           <Accordion variant="contained">
             <Accordion.Item value="dependencies">
               <Accordion.Control icon={<IconHierarchy size={16} />}>
-                Service Dependencies
+                Service Dependencies Graph
               </Accordion.Control>
               <Accordion.Panel>
                 <DependencyGraph 

@@ -53,6 +53,14 @@ export async function POST(request: Request) {
     const llamaService = LlamaService.getInstance(organizationName);
     await llamaService.ingestReadme(serviceName, readmeContent);
 
+    // Fire and forget: Ingest docs content (don't await)
+    githubAdapter.getDocsContent(organizationName, repoPath).then(docsContent => {
+      console.info(`Got ${Object.keys(docsContent).length} docs files for ${serviceName}, starting ingestion`);
+      llamaService.ingestDocs(serviceName, docsContent);
+    }).catch(error => {
+      console.error(`Failed to fetch/ingest docs for ${serviceName}:`, error);
+    });
+
     return NextResponse.json({ 
       success: true,
       message: 'Documentation ingested successfully'

@@ -13,48 +13,55 @@ import { OpenAI, OpenAIEmbedding } from "@llamaindex/openai";
 import { PGVectorStore } from "@llamaindex/postgres";
 import {FilterOperator, MetadataFilter} from "@llamaindex/core/vector-store"
 
-Settings.embedModel = new OpenAIEmbedding({
-  apiKey: env.OPENAI_API_KEY,
-  model: "text-embedding-3-large",
-  dimensions: 1536,
-});
+// Global flag to ensure Settings are only initialized once
+let settingsInitialized = false;
 
-Settings.llm = new OpenAI({
-  apiKey: env.OPENAI_API_KEY,
-  model: "gpt-4o-mini",
-});
+function initializeSettings() {
+  if (settingsInitialized) {
+    return;
+  }
+
+  Settings.embedModel = new OpenAIEmbedding({
+    apiKey: env.OPENAI_API_KEY,
+    model: "text-embedding-3-large",
+    dimensions: 1536,
+  });
+
+  Settings.llm = new OpenAI({
+    apiKey: env.OPENAI_API_KEY,
+    model: "gpt-4o-mini",
+  });
+
+  settingsInitialized = true;
+  console.info('LlamaIndex Settings initialized');
+}
 
 export class LlamaService {
   private static instances: Map<string, LlamaService> = new Map();
   private organizationName: string;
   private pipeline: IngestionPipeline;
+  private vectorStore: PGVectorStore | null = null;
 
   private constructor(organizationName: string) {
+    // Initialize settings only once
+    initializeSettings();
+    
     this.organizationName = organizationName;
+
+    // Initialize vector store once and reuse
+    this.vectorStore = new PGVectorStore({
+      clientConfig: { 
+        connectionString: env.DATABASE_URL 
+      },
+      dimensions: 1536,
+    });
 
     // Initialize ingestion pipeline with transformations including embeddings
     this.pipeline = new IngestionPipeline({
       transformations: [
         new SentenceSplitter({ chunkSize: 1024, chunkOverlap: 20 }),
       ],
-      vectorStore: new PGVectorStore({
-        client: {
-          db: {
-            connectionString: env.DATABASE_URL,
-          }
-        },
-        tableName: "documents",
-        dimensions: 1536,
-        shouldConnect: true,
-        embedModel: new OpenAIEmbedding({
-          apiKey: env.OPENAI_API_KEY,
-          model: "text-embedding-3-large",
-        }),
-        embeddingModel: new OpenAIEmbedding({
-          apiKey: env.OPENAI_API_KEY,
-          model: "text-embedding-3-large",
-        }),
-      }),
+      vectorStore: this.vectorStore,
     });
   }
 
@@ -63,6 +70,22 @@ export class LlamaService {
       LlamaService.instances.set(organizationName, new LlamaService(organizationName));
     }
     return LlamaService.instances.get(organizationName)!;
+  }
+
+  /**
+   * Get the reusable vector store instance
+   */
+  private getVectorStore(): PGVectorStore {
+    if (!this.vectorStore) {
+      this.vectorStore = new PGVectorStore({
+        clientConfig: { 
+          connectionString: env.DATABASE_URL 
+        },
+        tableName: "documents",
+        dimensions: 1536,
+      });
+    }
+    return this.vectorStore;
   }
 
   /**
@@ -83,15 +106,8 @@ export class LlamaService {
         }
       });
 
-      const connectionString = env.DATABASE_URL;
-
-      const pgvs = new PGVectorStore({ clientConfig: { connectionString } });
-
-
+      const pgvs = this.getVectorStore();
       const storageContext = await storageContextFromDefaults({ vectorStore: pgvs });
-
-
-
       const index = await VectorStoreIndex.fromVectorStore(pgvs);
 
       const retriever = index.asRetriever({
@@ -116,16 +132,75 @@ export class LlamaService {
   }
 
   /**
+   * Ingests docs content using the pipeline (fire and forget)
+   */
+  async ingestDocs(repoName: string, docsContent: { [filePath: string]: string }): Promise<void> {
+    try {
+      console.info(`Starting docs ingestion for ${repoName} with ${Object.keys(docsContent).length} files`);
+
+      if (Object.keys(docsContent).length === 0) {
+        console.info(`No docs content to ingest for ${repoName}`);
+        return;
+      }
+
+      const pgvs = this.getVectorStore();
+      const storageContext = await storageContextFromDefaults({ vectorStore: pgvs });
+      const index = await VectorStoreIndex.fromVectorStore(pgvs);
+
+      const documents: Document[] = [];
+
+      // Create documents for each file
+      for (const [filePath, content] of Object.entries(docsContent)) {
+        const document = new Document({
+          text: content,
+          id_: `${this.organizationName}/${repoName}/${filePath}`,
+          metadata: {
+            serviceName: repoName,
+            organizationName: this.organizationName,
+            repositoryName: repoName,
+            filePath: filePath,
+            documentType: 'docs'
+          }
+        });
+
+        // Check if similar content already exists
+        const retriever = index.asRetriever({
+          similarityTopK: 1,
+        });
+        const results = await retriever.retrieve({
+          query: content.substring(0, 500), // Use first 500 chars for similarity check
+        });
+
+        // Skip if score is > 0.95 (very similar content already exists)
+        if (results[0]?.score && results[0].score > 0.95) {
+          console.info(`Docs file ${filePath} for ${repoName} appears to already be ingested. Skipping.`);
+          continue;
+        }
+
+        documents.push(document);
+      }
+
+      if (documents.length > 0) {
+        console.info(`Ingesting ${documents.length} docs files for ${repoName}`);
+        await VectorStoreIndex.fromDocuments(documents, storageContext);
+        console.info(`Successfully ingested ${documents.length} docs files for ${repoName}`);
+      } else {
+        console.info(`All docs files for ${repoName} were already ingested`);
+      }
+
+    } catch (error) {
+      console.error(`Error ingesting docs for ${repoName}:`, error);
+      // Don't throw error since this is fire-and-forget
+    }
+  }
+
+  /**
    * Creates a chat engine for querying the ingested documents
    */
   async createChatEngine(repoName: string, organizationName: string, serviceName: string) {
     try {
-      const pgvs = new PGVectorStore({ clientConfig: { connectionString: env.DATABASE_URL } });
-
-
+      const pgvs = this.getVectorStore();
       const storageContext = await storageContextFromDefaults({ vectorStore: pgvs });
-
-
       const index = await VectorStoreIndex.fromVectorStore(pgvs);
 
 

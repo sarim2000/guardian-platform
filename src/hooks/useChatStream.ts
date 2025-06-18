@@ -19,6 +19,12 @@ export function useChatStream({ service, messages, setMessages, setError }: UseC
 
   const sendMessage = useCallback(async (messageContent: string) => {
     if (!service || loading) return;
+    
+    // Validate required fields before making the request
+    if (!service.organizationName || !service.repositoryName || !service.serviceName || !messageContent.trim()) {
+      setError('Missing required information. Please ensure organization, repository, and service are properly configured.');
+      return;
+    }
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),

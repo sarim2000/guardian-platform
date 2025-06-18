@@ -25,7 +25,7 @@ export function ChatInterface({ service, organizationName, repositoryName }: Cha
     service: {
       organizationName,
       repositoryName,
-      serviceName: service ? service.serviceName : '',
+      serviceName: service ? service.serviceName : repositoryName, // Use repositoryName as fallback
     },
     messages,
     setMessages,

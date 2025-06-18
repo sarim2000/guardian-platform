@@ -213,6 +213,80 @@ export class GitHubAdapter implements IGitProviderAdapter {
       return null;
     }
   }
+
+  /**
+   * Gets all documentation files from the docs folder recursively
+   * Returns a map of file path to content
+   */
+  async getDocsContent(organizationName: string, repoPath: string): Promise<{ [filePath: string]: string }> {
+    try {
+      const parts = repoPath.split('/');
+      const repo = parts[0]; // Always the repository name
+      const service = parts.length > 1 ? parts[1] : null; // Service name if monorepo
+      
+      // Construct the docs path based on whether it's a monorepo or not
+      const docsPath = 'docs';
+      
+      console.info('Fetching docs folder:', {
+        organizationName,
+        repoPath,
+        repo,
+        service,
+        docsPath,
+        isMonorepo: !!service
+      });
+
+      const docsContent: { [filePath: string]: string } = {};
+
+      // Recursive function to fetch files from a directory
+      const fetchFilesFromDirectory = async (dirPath: string): Promise<void> => {
+        try {
+          const { data } = await this.octokit.repos.getContent({
+            owner: organizationName,
+            repo: repo,
+            path: dirPath,
+          });
+
+          if (Array.isArray(data)) {
+            // Process files and directories
+            for (const item of data) {
+              if (item.type === 'file' && (item.name.endsWith('.md') || item.name.endsWith('.markdown'))) {
+                // It's a markdown file, fetch its content
+                try {
+                  const content = await this.getFileContent(`${organizationName}/${repo}`, item.path);
+                  if (content) {
+                    docsContent[item.path] = content;
+                    console.info(`Successfully fetched: ${item.path}`);
+                  }
+                } catch (error) {
+                  console.warn(`Failed to fetch ${item.path}:`, error);
+                }
+              } else if (item.type === 'dir') {
+                // It's a directory, recursively fetch files from it
+                console.info(`Exploring subdirectory: ${item.path}`);
+                await fetchFilesFromDirectory(item.path);
+              }
+            }
+          }
+        } catch (error: any) {
+          if (error.status === 404) {
+            console.info(`Directory not found: ${dirPath}`);
+          } else {
+            console.error(`Error accessing directory ${dirPath}:`, error);
+          }
+        }
+      };
+
+      // Start the recursive fetch from the docs folder
+      await fetchFilesFromDirectory(docsPath);
+
+      console.info(`Total markdown files found: ${Object.keys(docsContent).length}`);
+      return docsContent;
+    } catch (error) {
+      console.error('Error fetching docs content:', error);
+      return {};
+    }
+  }
 }
 
 export interface IngestionResult {
