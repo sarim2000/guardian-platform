@@ -43,6 +43,8 @@ import {
   IconFunction,
   IconContainer,
   IconScale,
+  IconStar,
+  IconStarFilled,
 } from '@tabler/icons-react';
 import {
   getResourceTypeColor,
@@ -66,6 +68,7 @@ interface AWSResource {
   resourceState?: string;
   healthStatus?: string;
   isActive?: boolean;
+  isStarred: boolean;
   operationalMetrics?: Record<string, any>;
   statusDetails?: Record<string, any>;
   firstDiscoveredAt: string;
@@ -87,6 +90,7 @@ interface APIResponse {
     resourceType?: string;
     region?: string;
     accountName?: string;
+    starredOnly?: boolean;
   };
   error?: string;
 }
@@ -124,6 +128,7 @@ export default function AWSResourcesPage() {
   const [resourceTypeFilter, setResourceTypeFilter] = useState<string>('');
   const [regionFilter, setRegionFilter] = useState<string>('');
   const [accountFilter, setAccountFilter] = useState<string>('');
+  const [starredOnlyFilter, setStarredOnlyFilter] = useState(false);
   const [activeOnlyFilter, setActiveOnlyFilter] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -145,6 +150,44 @@ export default function AWSResourcesPage() {
     }
   };
 
+  const toggleStarred = async (resourceId: string, currentStarredState: boolean) => {
+    try {
+      const response = await fetch('/api/aws/resources', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          resourceId,
+          isStarred: !currentStarredState,
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        // Update the local state
+        setResources(prevResources => 
+          prevResources.map(resource => 
+            resource.id === resourceId 
+              ? { ...resource, isStarred: !currentStarredState }
+              : resource
+          )
+        );
+        
+        // Update selected resource if it's the one being toggled
+        if (selectedResource?.id === resourceId) {
+          setSelectedResource(prev => prev ? { ...prev, isStarred: !currentStarredState } : null);
+        }
+      } else {
+        setError(data.error || 'Failed to update starred status');
+      }
+    } catch (err) {
+      setError('Failed to update starred status');
+      console.error('Error toggling starred status:', err);
+    }
+  };
+
   const fetchResources = async (currentPage = 1) => {
     setLoading(true);
     setError(null);
@@ -158,6 +201,7 @@ export default function AWSResourcesPage() {
       if (resourceTypeFilter) params.append('resourceType', resourceTypeFilter);
       if (regionFilter) params.append('region', regionFilter);
       if (accountFilter) params.append('accountName', accountFilter);
+      if (starredOnlyFilter) params.append('starredOnly', 'true');
       
       const response = await fetch(`/api/aws/resources?${params}`);
       const data: APIResponse = await response.json();
@@ -203,7 +247,7 @@ export default function AWSResourcesPage() {
 
   useEffect(() => {
     fetchResources(page);
-  }, [page, resourceTypeFilter, regionFilter, accountFilter]);
+  }, [page, resourceTypeFilter, regionFilter, accountFilter, starredOnlyFilter]);
 
   useEffect(() => {
     fetchAwsAccounts();
@@ -280,6 +324,7 @@ export default function AWSResourcesPage() {
   const activeCount = resources.filter(r => r.isActive).length;
   const healthyCount = resources.filter(r => r.healthStatus === 'healthy').length;
   const unhealthyCount = resources.filter(r => r.healthStatus === 'unhealthy').length;
+  const starredCount = resources.filter(r => r.isStarred).length;
 
   return (
     <Container size="xl" py="md">
@@ -301,7 +346,7 @@ export default function AWSResourcesPage() {
 
         {/* Summary Cards */}
         <Grid>
-          <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+          <Grid.Col span={{ base: 12, sm: 6, md: 2.4 }}>
             <Card withBorder>
               <Group justify="space-between">
                 <div>
@@ -314,7 +359,20 @@ export default function AWSResourcesPage() {
               </Group>
             </Card>
           </Grid.Col>
-          <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+          <Grid.Col span={{ base: 12, sm: 6, md: 2.4 }}>
+            <Card withBorder>
+              <Group justify="space-between">
+                <div>
+                  <Text size="xs" tt="uppercase" fw={700} c="dimmed">Starred</Text>
+                  <Text fw={700} size="xl" c="yellow">{starredCount}</Text>
+                </div>
+                <ThemeIcon color="yellow" size="lg" radius="md">
+                  <IconStarFilled size={22} />
+                </ThemeIcon>
+              </Group>
+            </Card>
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, sm: 6, md: 2.4 }}>
             <Card withBorder>
               <Group justify="space-between">
                 <div>
@@ -327,7 +385,7 @@ export default function AWSResourcesPage() {
               </Group>
             </Card>
           </Grid.Col>
-          <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+          <Grid.Col span={{ base: 12, sm: 6, md: 2.4 }}>
             <Card withBorder>
               <Group justify="space-between">
                 <div>
@@ -340,7 +398,7 @@ export default function AWSResourcesPage() {
               </Group>
             </Card>
           </Grid.Col>
-          <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+          <Grid.Col span={{ base: 12, sm: 6, md: 2.4 }}>
             <Card withBorder>
               <Group justify="space-between">
                 <div>
@@ -415,6 +473,11 @@ export default function AWSResourcesPage() {
                   label="Active only"
                   checked={activeOnlyFilter}
                   onChange={(event) => setActiveOnlyFilter(event.currentTarget.checked)}
+                />
+                <Switch
+                  label="Starred only"
+                  checked={starredOnlyFilter}
+                  onChange={(event) => setStarredOnlyFilter(event.currentTarget.checked)}
                 />
                 <Text size="sm" c="dimmed">
                   {totalCount} resources found
@@ -537,13 +600,25 @@ export default function AWSResourcesPage() {
                         </div>
                       </Table.Td>
                       <Table.Td>
-                        <ActionIcon 
-                          variant="light" 
-                          size="sm"
-                          onClick={() => openDetailsModal(resource)}
-                        >
-                          <IconEye size={14} />
-                        </ActionIcon>
+                        <Group gap="xs">
+                          <Tooltip label={resource.isStarred ? 'Unstar' : 'Star'}>
+                            <ActionIcon 
+                              variant="light" 
+                              size="sm"
+                              color={resource.isStarred ? 'yellow' : 'gray'}
+                              onClick={() => toggleStarred(resource.id, resource.isStarred)}
+                            >
+                              {resource.isStarred ? <IconStarFilled size={14} /> : <IconStar size={14} />}
+                            </ActionIcon>
+                          </Tooltip>
+                          <ActionIcon 
+                            variant="light" 
+                            size="sm"
+                            onClick={() => openDetailsModal(resource)}
+                          >
+                            <IconEye size={14} />
+                          </ActionIcon>
+                        </Group>
                       </Table.Td>
                     </Table.Tr>
                   ))
@@ -614,6 +689,17 @@ export default function AWSResourcesPage() {
                     <Text size="xs" c="dimmed">
                       {new Date(selectedResource.firstDiscoveredAt).toLocaleString()}
                     </Text>
+                  </Grid.Col>
+                  <Grid.Col span={6}>
+                    <Text size="sm" fw={500}>Starred</Text>
+                    <Badge 
+                      color={selectedResource.isStarred ? 'yellow' : 'gray'} 
+                      variant="light" 
+                      size="sm"
+                      leftSection={selectedResource.isStarred ? <IconStarFilled size={12} /> : <IconStar size={12} />}
+                    >
+                      {selectedResource.isStarred ? 'Yes' : 'No'}
+                    </Badge>
                   </Grid.Col>
                 </Grid>
               </Stack>

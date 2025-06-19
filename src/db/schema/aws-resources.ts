@@ -32,6 +32,9 @@ export const awsDiscoveredResources = pgTable('aws_discovered_resources', {
   operationalMetrics: jsonb('operational_metrics'), // Additional metrics like CPU, memory, etc.
   statusDetails: jsonb('status_details'), // Detailed status information specific to resource type
   
+  // User Preferences
+  isStarred: boolean('is_starred').notNull().default(false), // User favorite/starred resource
+  
   // Timestamps
   firstDiscoveredAt: timestamp('first_discovered_at', { withTimezone: true }).defaultNow().notNull(),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow().notNull(),
@@ -45,6 +48,7 @@ export const awsDiscoveredResources = pgTable('aws_discovered_resources', {
   index('idx_aws_resources_state').on(table.resourceState),
   index('idx_aws_resources_health').on(table.healthStatus),
   index('idx_aws_resources_active').on(table.isActive),
+  index('idx_aws_resources_starred').on(table.isStarred), // Index for starred resources
   
   // Foreign key constraint (nullable for backward compatibility)
   foreignKey({

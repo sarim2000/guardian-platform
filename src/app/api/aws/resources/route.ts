@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
     const resourceType = searchParams.get('resourceType');
     const region = searchParams.get('region');
     const accountName = searchParams.get('accountName');
+    const starredOnly = searchParams.get('starredOnly') === 'true';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
     const sortOrder = searchParams.get('sortOrder') || 'desc';
@@ -21,6 +22,9 @@ export async function GET(request: NextRequest) {
     }
     if (region) {
       resourceWhereConditions.push(eq(awsDiscoveredResources.awsRegion, region));
+    }
+    if (starredOnly) {
+      resourceWhereConditions.push(eq(awsDiscoveredResources.isStarred, true));
     }
     
     // Build where conditions for accounts table
@@ -50,6 +54,7 @@ export async function GET(request: NextRequest) {
         resourceState: awsDiscoveredResources.resourceState,
         healthStatus: awsDiscoveredResources.healthStatus,
         isActive: awsDiscoveredResources.isActive,
+        isStarred: awsDiscoveredResources.isStarred,
         operationalMetrics: awsDiscoveredResources.operationalMetrics,
         statusDetails: awsDiscoveredResources.statusDetails,
         firstDiscoveredAt: awsDiscoveredResources.firstDiscoveredAt,
@@ -60,7 +65,13 @@ export async function GET(request: NextRequest) {
       .from(awsDiscoveredResources)
       .leftJoin(awsAccounts, eq(awsDiscoveredResources.awsAccountConfigId, awsAccounts.id))
       .where(whereClause)
-      .orderBy(sortOrder === 'asc' ? asc(awsDiscoveredResources.lastSeenAt) : desc(awsDiscoveredResources.lastSeenAt))
+      .orderBy(
+        // Sort starred resources first if not filtering by starred only
+        starredOnly 
+          ? (sortOrder === 'asc' ? asc(awsDiscoveredResources.lastSeenAt) : desc(awsDiscoveredResources.lastSeenAt))
+          : desc(awsDiscoveredResources.isStarred),
+        sortOrder === 'asc' ? asc(awsDiscoveredResources.lastSeenAt) : desc(awsDiscoveredResources.lastSeenAt)
+      )
       .limit(limit)
       .offset(offset);
     
@@ -86,10 +97,59 @@ export async function GET(request: NextRequest) {
         resourceType,
         region,
         accountName,
+        starredOnly,
       },
     });
   } catch (error) {
     console.error('Error fetching AWS resources:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Unknown error occurred',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { resourceId, isStarred } = body;
+
+    if (!resourceId || typeof isStarred !== 'boolean') {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Missing required fields: resourceId and isStarred (boolean)' 
+        },
+        { status: 400 }
+      );
+    }
+
+    // Update the starred status
+    const result = await db
+      .update(awsDiscoveredResources)
+      .set({ isStarred })
+      .where(eq(awsDiscoveredResources.id, resourceId))
+      .returning({ id: awsDiscoveredResources.id });
+
+    if (result.length === 0) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Resource not found' 
+        },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Resource ${isStarred ? 'starred' : 'unstarred'} successfully`
+    });
+  } catch (error) {
+    console.error('Error updating resource starred status:', error);
     return NextResponse.json(
       {
         success: false,

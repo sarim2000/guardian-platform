@@ -57,6 +57,13 @@
       "when": 1750320454451,
       "tag": "0007_exotic_scalphunter",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1750327091708,
+      "tag": "0008_ancient_ultragirl",
+      "breakpoints": true
     }
   ]
 }

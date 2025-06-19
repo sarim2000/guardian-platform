@@ -1,0 +1,2 @@
+ALTER TABLE "aws_discovered_resources" ADD COLUMN "is_starred" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+CREATE INDEX "idx_aws_resources_starred" ON "aws_discovered_resources" USING btree ("is_starred");
