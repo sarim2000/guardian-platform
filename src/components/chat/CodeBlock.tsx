@@ -60,6 +60,7 @@ export function CodeBlock({ children, language }: CodeBlockProps) {
       <ScrollArea
         style={{
           maxHeight: '400px',
+          overflow: 'scroll',
         }}
       >
         <Box

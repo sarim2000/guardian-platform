@@ -91,7 +91,7 @@ export class LlamaService {
   /**
    * Ingests README content using the pipeline
    */
-  async ingestReadme(repoName: string, readmeContent: string): Promise<void> {
+  async ingestReadme(repoName: string, serviceName: string, readmeContent: string): Promise<void> {
     try {
       console.info(`Starting ingestion for ${repoName}`);
 
@@ -100,7 +100,7 @@ export class LlamaService {
         text: readmeContent,
         id_: `${this.organizationName}/${repoName}/README.md`,
         metadata: {
-          serviceName: repoName,
+          serviceName: serviceName,
           organizationName: this.organizationName,
           repositoryName: repoName
         }
@@ -117,8 +117,9 @@ export class LlamaService {
         query: document.text,
       });
 
-      // skip if score is > 0.95
-      if (results[0]?.score && results[0].score > 0.95) {
+
+      // skip if score is > 0.80
+      if (results[0]?.score && results[0].score > 0.80) {
         console.info(`README for ${repoName} has already been ingested. Skipping ingestion.`);
         return;
       }
@@ -134,7 +135,7 @@ export class LlamaService {
   /**
    * Ingests docs content using the pipeline (fire and forget)
    */
-  async ingestDocs(repoName: string, docsContent: { [filePath: string]: string }): Promise<void> {
+  async ingestDocs(repoName: string, serviceName: string, docsContent: { [filePath: string]: string }): Promise<void> {
     try {
       console.info(`Starting docs ingestion for ${repoName} with ${Object.keys(docsContent).length} files`);
 
@@ -155,7 +156,7 @@ export class LlamaService {
           text: content,
           id_: `${this.organizationName}/${repoName}/${filePath}`,
           metadata: {
-            serviceName: repoName,
+            serviceName: serviceName,
             organizationName: this.organizationName,
             repositoryName: repoName,
             filePath: filePath,
@@ -171,8 +172,8 @@ export class LlamaService {
           query: content.substring(0, 500), // Use first 500 chars for similarity check
         });
 
-        // Skip if score is > 0.95 (very similar content already exists)
-        if (results[0]?.score && results[0].score > 0.95) {
+        // Skip if score is > 0.80 (very similar content already exists)
+        if (results[0]?.score && results[0].score > 0.80) {
           console.info(`Docs file ${filePath} for ${repoName} appears to already be ingested. Skipping.`);
           continue;
         }
@@ -199,6 +200,7 @@ export class LlamaService {
    */
   async createChatEngine(repoName: string, organizationName: string, serviceName: string) {
     try {
+      console.log('creating chat engine for', repoName, organizationName, serviceName);
       const pgvs = this.getVectorStore();
       const storageContext = await storageContextFromDefaults({ vectorStore: pgvs });
       const index = await VectorStoreIndex.fromVectorStore(pgvs);
@@ -211,19 +213,20 @@ export class LlamaService {
             {
               key: "serviceName",
               operator: FilterOperator.EQ,
-              value: repoName,
+              value: serviceName,
             },
             {
-              key: "organizationName",
+              key: "repositoryName",
               operator: FilterOperator.EQ,
-              value: organizationName,
+              value: repoName,
             },
           ]
-        }
+        },
       });
       
       const chatEngine = index.asChatEngine({
         retriever: retriever,
+        
       });
 
       return chatEngine;

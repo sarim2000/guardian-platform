@@ -63,6 +63,7 @@ export async function POST(request: Request) {
         let chatEngine: any = null;
 
         try {
+          console.log('creating chat engine for', repoName, organizationName, serviceName);
           llamaService = LlamaService.getInstance(organizationName);
           chatEngine = await llamaService.createChatEngine(repoName, organizationName, serviceName);
 
