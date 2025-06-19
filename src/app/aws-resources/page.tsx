@@ -71,6 +71,7 @@ interface AWSResource {
   firstDiscoveredAt: string;
   lastSeenAt: string;
   statusLastChecked?: string;
+  accountName?: string;
 }
 
 interface APIResponse {
@@ -85,8 +86,23 @@ interface APIResponse {
   filters: {
     resourceType?: string;
     region?: string;
+    accountName?: string;
   };
   error?: string;
+}
+
+interface AWSAccount {
+  id: string;
+  accountName: string;
+  accountId: string;
+  defaultRegion: string;
+  regions: string[];
+  isActive: boolean;
+  isDefault: boolean;
+  description?: string;
+  organizationRole?: string;
+  createdAt: Date;
+  lastUsed?: Date;
 }
 
 export default function AWSResourcesPage() {
@@ -100,11 +116,34 @@ export default function AWSResourcesPage() {
   const [selectedResource, setSelectedResource] = useState<AWSResource | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   
+  // AWS Accounts state
+  const [awsAccounts, setAwsAccounts] = useState<AWSAccount[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  
   // Filters
   const [resourceTypeFilter, setResourceTypeFilter] = useState<string>('');
   const [regionFilter, setRegionFilter] = useState<string>('');
+  const [accountFilter, setAccountFilter] = useState<string>('');
   const [activeOnlyFilter, setActiveOnlyFilter] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const fetchAwsAccounts = async () => {
+    setAccountsLoading(true);
+    try {
+      const response = await fetch('/api/aws/accounts');
+      const data = await response.json();
+      
+      if (data.success) {
+        setAwsAccounts(data.data.filter((account: AWSAccount) => account.isActive));
+      } else {
+        console.error('Failed to fetch AWS accounts:', data.error);
+      }
+    } catch (err) {
+      console.error('Error fetching AWS accounts:', err);
+    } finally {
+      setAccountsLoading(false);
+    }
+  };
 
   const fetchResources = async (currentPage = 1) => {
     setLoading(true);
@@ -118,6 +157,7 @@ export default function AWSResourcesPage() {
       
       if (resourceTypeFilter) params.append('resourceType', resourceTypeFilter);
       if (regionFilter) params.append('region', regionFilter);
+      if (accountFilter) params.append('accountName', accountFilter);
       
       const response = await fetch(`/api/aws/resources?${params}`);
       const data: APIResponse = await response.json();
@@ -163,7 +203,11 @@ export default function AWSResourcesPage() {
 
   useEffect(() => {
     fetchResources(page);
-  }, [page, resourceTypeFilter, regionFilter]);
+  }, [page, resourceTypeFilter, regionFilter, accountFilter]);
+
+  useEffect(() => {
+    fetchAwsAccounts();
+  }, []);
 
   const filteredResources = resources.filter(resource => {
     // Apply search filter
@@ -345,7 +389,18 @@ export default function AWSResourcesPage() {
                   clearable
                   style={{ minWidth: 150 }}
                 />
-
+                <Select
+                  label="Account"
+                  placeholder="All accounts"
+                  data={[
+                    { value: '', label: 'All accounts' },
+                    ...awsAccounts.map(account => ({ value: account.accountName, label: account.accountName }))
+                  ]}
+                  value={accountFilter}
+                  onChange={(value) => setAccountFilter(value || '')}
+                  clearable
+                  style={{ minWidth: 150 }}
+                />
                 <TextInput
                   label="Search"
                   placeholder="Search by ARN, name, type, or state..."
@@ -381,6 +436,7 @@ export default function AWSResourcesPage() {
                   <Table.Th style={{ minWidth: 100 }}>Status</Table.Th>
                   <Table.Th style={{ minWidth: 80 }}>Health</Table.Th>
                   <Table.Th style={{ minWidth: 100 }}>Region</Table.Th>
+                  <Table.Th style={{ minWidth: 120 }}>Account</Table.Th>
                   <Table.Th style={{ minWidth: 120 }}>Last Checked</Table.Th>
                   <Table.Th style={{ minWidth: 80 }}>Actions</Table.Th>
                 </Table.Tr>
@@ -388,7 +444,7 @@ export default function AWSResourcesPage() {
               <Table.Tbody>
                 {filteredResources.length === 0 ? (
                   <Table.Tr>
-                    <Table.Td colSpan={7}>
+                    <Table.Td colSpan={8}>
                       <Text ta="center" c="dimmed" py="xl">
                         {loading ? 'Loading...' : 'No AWS resources found. Try discovering resources first.'}
                       </Text>
@@ -459,6 +515,11 @@ export default function AWSResourcesPage() {
                         <Badge variant="outline" size="xs">
                           {resource.awsRegion}
                         </Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="xs" c="dimmed" style={{ maxWidth: 110 }} truncate>
+                          {resource.accountName || 'Unknown'}
+                        </Text>
                       </Table.Td>
                       <Table.Td>
                         <div>
@@ -539,6 +600,10 @@ export default function AWSResourcesPage() {
                   <Grid.Col span={6}>
                     <Text size="sm" fw={500}>Account ID</Text>
                     <Text size="xs" c="dimmed">{selectedResource.awsAccountId}</Text>
+                  </Grid.Col>
+                  <Grid.Col span={6}>
+                    <Text size="sm" fw={500}>Account Name</Text>
+                    <Text size="xs" c="dimmed">{selectedResource.accountName || 'Unknown'}</Text>
                   </Grid.Col>
                   <Grid.Col span={6}>
                     <Text size="sm" fw={500}>Region</Text>
