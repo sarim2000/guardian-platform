@@ -5,6 +5,7 @@ import {
   jsonb,
   timestamp,
   index,
+  boolean,
 } from 'drizzle-orm/pg-core';
 
 /**
@@ -21,14 +22,25 @@ export const awsDiscoveredResources = pgTable('aws_discovered_resources', {
   allTags: jsonb('all_tags'), // All AWS tags as JSON
   rawMetadata: jsonb('raw_metadata').notNull(), // Complete AWS API response as JSON
   
+  // Operational Status Fields
+  resourceState: text('resource_state'), // e.g., 'running', 'stopped', 'available', 'pending'
+  healthStatus: text('health_status'), // e.g., 'healthy', 'unhealthy', 'unknown'
+  isActive: boolean('is_active'), // Quick boolean for active/inactive state
+  operationalMetrics: jsonb('operational_metrics'), // Additional metrics like CPU, memory, etc.
+  statusDetails: jsonb('status_details'), // Detailed status information specific to resource type
+  
   // Timestamps
   firstDiscoveredAt: timestamp('first_discovered_at', { withTimezone: true }).defaultNow().notNull(),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow().notNull(),
+  statusLastChecked: timestamp('status_last_checked', { withTimezone: true }), // When status was last verified
 }, (table) => {
   return {
     idxArn: index('idx_aws_resources_arn').on(table.arn),
     idxResourceType: index('idx_aws_resources_type').on(table.resourceType),
     idxRegion: index('idx_aws_resources_region').on(table.awsRegion),
     idxAccountId: index('idx_aws_resources_account').on(table.awsAccountId),
+    idxResourceState: index('idx_aws_resources_state').on(table.resourceState),
+    idxHealthStatus: index('idx_aws_resources_health').on(table.healthStatus),
+    idxIsActive: index('idx_aws_resources_active').on(table.isActive),
   };
 }).enableRLS(); 

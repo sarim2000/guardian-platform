@@ -12,7 +12,13 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@aws-sdk/client-cloudwatch": "^3.830.0",
     "@aws-sdk/client-config-service": "^3.821.0",
+    "@aws-sdk/client-ec2": "^3.830.0",
+    "@aws-sdk/client-ecs": "^3.830.0",
+    "@aws-sdk/client-elastic-load-balancing-v2": "^3.830.0",
+    "@aws-sdk/client-lambda": "^3.830.0",
+    "@aws-sdk/client-rds": "^3.830.0",
     "@aws-sdk/client-resource-groups-tagging-api": "^3.821.0",
     "@llamaindex/cloud": "^4.0.14",
     "@llamaindex/openai": "^0.4.4",

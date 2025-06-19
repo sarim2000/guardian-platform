@@ -19,8 +19,41 @@ import {
   ActionIcon,
   Tooltip,
   ScrollArea,
+  Modal,
+  Card,
+  Grid,
+  Progress,
+  ThemeIcon,
+  Flex,
+  Switch,
 } from '@mantine/core';
-import { IconRefresh, IconSearch, IconAlertCircle, IconCloud } from '@tabler/icons-react';
+import { 
+  IconRefresh, 
+  IconSearch, 
+  IconAlertCircle, 
+  IconCloud,
+  IconEye,
+  IconCircleCheck,
+  IconCircleX,
+  IconCircleDot,
+  IconActivity,
+  IconClock,
+  IconServer,
+  IconDatabase,
+  IconFunction,
+  IconContainer,
+  IconScale,
+} from '@tabler/icons-react';
+import {
+  getResourceTypeColor,
+  getResourceTypeIcon,
+  getHealthStatusIcon,
+  getResourceStateColor,
+  AWS_REGIONS,
+  AWS_RESOURCE_TYPES,
+  extractStatusDetails,
+  extractOperationalMetrics,
+} from '@/utils/aws-utils';
 
 interface AWSResource {
   id: string;
@@ -30,8 +63,14 @@ interface AWSResource {
   resourceType: string;
   nameTag?: string;
   allTags: Record<string, string>;
+  resourceState?: string;
+  healthStatus?: string;
+  isActive?: boolean;
+  operationalMetrics?: Record<string, any>;
+  statusDetails?: Record<string, any>;
   firstDiscoveredAt: string;
   lastSeenAt: string;
+  statusLastChecked?: string;
 }
 
 interface APIResponse {
@@ -58,30 +97,14 @@ export default function AWSResourcesPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [selectedResource, setSelectedResource] = useState<AWSResource | null>(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   
   // Filters
   const [resourceTypeFilter, setResourceTypeFilter] = useState<string>('');
   const [regionFilter, setRegionFilter] = useState<string>('');
+  const [activeOnlyFilter, setActiveOnlyFilter] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-
-  const resourceTypes = [
-    'EC2::Instance', 'EC2::Volume', 'EC2::SecurityGroup', 'EC2::VPC', 'EC2::Subnet',
-    'RDS::DBInstance', 'RDS::DBCluster', 'S3::Bucket', 'Lambda::Function',
-    'ECS::Cluster', 'ECS::Service', 'ECS::TaskDefinition', 'DynamoDB::Table',
-    'SNS::Topic', 'SQS::Queue', 'ELB::LoadBalancer', 'ELB::TargetGroup',
-    'IAM::Role', 'IAM::User', 'CloudWatchLogs::LogGroup', 'CloudWatch::Alarm',
-    'Kinesis::Stream', 'OpenSearch::Domain', 'MSK::Cluster', 'Redshift::Cluster',
-    'ElastiCache::Cluster', 'APIGateway::RestApi', 'Route53::HostedZone',
-    'CloudFront::Distribution', 'SecretsManager::Secret', 'SSM::Parameter',
-    'Glue::Database', 'Glue::Job', 'StepFunctions::StateMachine', 'Batch::JobQueue',
-    'EFS::FileSystem', 'EKS::Cluster', 'ECR::Repository'
-  ];
-  const regions = [
-    'us-east-1', 'us-west-1', 'us-west-2', 'us-east-2',
-    'eu-west-1', 'eu-west-2', 'eu-west-3', 'eu-central-1', 'eu-north-1',
-    'ap-southeast-1', 'ap-southeast-2', 'ap-northeast-1', 'ap-northeast-2', 'ap-south-1',
-    'ca-central-1', 'sa-east-1', 'af-south-1', 'me-south-1'
-  ];
 
   const fetchResources = async (currentPage = 1) => {
     setLoading(true);
@@ -143,49 +166,76 @@ export default function AWSResourcesPage() {
   }, [page, resourceTypeFilter, regionFilter]);
 
   const filteredResources = resources.filter(resource => {
-    if (!searchTerm) return true;
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      resource.arn.toLowerCase().includes(searchLower) ||
-      resource.nameTag?.toLowerCase().includes(searchLower) ||
-      resource.resourceType.toLowerCase().includes(searchLower)
-    );
+    // Apply search filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = (
+        resource.arn.toLowerCase().includes(searchLower) ||
+        resource.nameTag?.toLowerCase().includes(searchLower) ||
+        resource.resourceType.toLowerCase().includes(searchLower) ||
+        resource.resourceState?.toLowerCase().includes(searchLower)
+      );
+      if (!matchesSearch) return false;
+    }
+    
+    // Apply active only filter
+    if (activeOnlyFilter && !resource.isActive) {
+      return false;
+    }
+    
+    return true;
   });
 
-  const getResourceTypeColor = (type: string) => {
-    const service = type.split('::')[0];
-    switch (service) {
-      case 'EC2': return 'blue';
-      case 'RDS': return 'purple';
-      case 'S3': return 'green';
-      case 'Lambda': return 'orange';
-      case 'ECS': return 'cyan';
-      case 'DynamoDB': return 'yellow';
-      case 'SNS': return 'pink';
-      case 'SQS': return 'lime';
-      case 'ELB': return 'indigo';
-      case 'IAM': return 'red';
-      case 'CloudWatchLogs':
-      case 'CloudWatch': return 'teal';
-      case 'Kinesis': return 'violet';
-      case 'OpenSearch': return 'grape';
-      case 'MSK': return 'dark';
-      case 'Redshift': return 'blue';
-      case 'ElastiCache': return 'red';
-      case 'APIGateway': return 'green';
-      case 'Route53': return 'orange';
-      case 'CloudFront': return 'cyan';
-      case 'SecretsManager': return 'pink';
-      case 'SSM': return 'gray';
-      case 'Glue': return 'yellow';
-      case 'StepFunctions': return 'indigo';
-      case 'Batch': return 'lime';
-      case 'EFS': return 'teal';
-      case 'EKS': return 'violet';
-      case 'ECR': return 'grape';
-      default: return 'gray';
-    }
+  const openDetailsModal = (resource: AWSResource) => {
+    setSelectedResource(resource);
+    setDetailsModalOpen(true);
   };
+
+  const renderOperationalMetrics = (resource: AWSResource) => {
+    const items = extractOperationalMetrics(resource.operationalMetrics);
+    
+    if (items.length === 0) return null;
+
+    return (
+      <Stack gap="xs">
+        {items.map((item: { type: string; key: string; label: string; value: string; percentage?: number }) => (
+          <div key={item.key}>
+            <Text size="sm" fw={500}>{item.label}</Text>
+            {item.type === 'progress' ? (
+              <Group gap="xs">
+                <Progress value={item.percentage || 0} size="sm" style={{ flex: 1 }} />
+                <Text size="xs">{item.value}</Text>
+              </Group>
+            ) : (
+              <Text size="xs" c="dimmed">{item.value}</Text>
+            )}
+          </div>
+        ))}
+      </Stack>
+    );
+  };
+
+  const renderStatusDetails = (resource: AWSResource) => {
+    const items = extractStatusDetails(resource.statusDetails);
+    
+    if (items.length === 0) return null;
+
+    return (
+      <Grid>
+        {items.map((item: { label: string; value: any }, index: number) => (
+          <Grid.Col span={6} key={index}>
+            <Text size="sm" fw={500}>{item.label}</Text>
+            <Text size="xs" c="dimmed">{item.value}</Text>
+          </Grid.Col>
+        ))}
+      </Grid>
+    );
+  };
+
+  // Calculate summary stats
+  const activeCount = resources.filter(r => r.isActive).length;
+  const healthyCount = resources.filter(r => r.healthStatus === 'healthy').length;
+  const unhealthyCount = resources.filter(r => r.healthStatus === 'unhealthy').length;
 
   return (
     <Container size="xl" py="md">
@@ -205,6 +255,62 @@ export default function AWSResourcesPage() {
           </Button>
         </Group>
 
+        {/* Summary Cards */}
+        <Grid>
+          <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+            <Card withBorder>
+              <Group justify="space-between">
+                <div>
+                  <Text size="xs" tt="uppercase" fw={700} c="dimmed">Total Resources</Text>
+                  <Text fw={700} size="xl">{totalCount}</Text>
+                </div>
+                <ThemeIcon color="blue" size="lg" radius="md">
+                  <IconCloud size={22} />
+                </ThemeIcon>
+              </Group>
+            </Card>
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+            <Card withBorder>
+              <Group justify="space-between">
+                <div>
+                  <Text size="xs" tt="uppercase" fw={700} c="dimmed">Active</Text>
+                  <Text fw={700} size="xl" c="green">{activeCount}</Text>
+                </div>
+                <ThemeIcon color="green" size="lg" radius="md">
+                  <IconActivity size={22} />
+                </ThemeIcon>
+              </Group>
+            </Card>
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+            <Card withBorder>
+              <Group justify="space-between">
+                <div>
+                  <Text size="xs" tt="uppercase" fw={700} c="dimmed">Healthy</Text>
+                  <Text fw={700} size="xl" c="green">{healthyCount}</Text>
+                </div>
+                <ThemeIcon color="green" size="lg" radius="md">
+                  <IconCircleCheck size={22} />
+                </ThemeIcon>
+              </Group>
+            </Card>
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+            <Card withBorder>
+              <Group justify="space-between">
+                <div>
+                  <Text size="xs" tt="uppercase" fw={700} c="dimmed">Unhealthy</Text>
+                  <Text fw={700} size="xl" c="red">{unhealthyCount}</Text>
+                </div>
+                <ThemeIcon color="red" size="lg" radius="md">
+                  <IconCircleX size={22} />
+                </ThemeIcon>
+              </Group>
+            </Card>
+          </Grid.Col>
+        </Grid>
+
         {error && (
           <Alert icon={<IconAlertCircle size={16} />} color="red" variant="light">
             {error}
@@ -220,7 +326,7 @@ export default function AWSResourcesPage() {
                   placeholder="All types"
                   data={[
                     { value: '', label: 'All types' },
-                    ...resourceTypes.map(type => ({ value: type, label: type }))
+                    ...AWS_RESOURCE_TYPES.map(type => ({ value: type, label: type }))
                   ]}
                   value={resourceTypeFilter}
                   onChange={(value) => setResourceTypeFilter(value || '')}
@@ -232,25 +338,33 @@ export default function AWSResourcesPage() {
                   placeholder="All regions"
                   data={[
                     { value: '', label: 'All regions' },
-                    ...regions.map(region => ({ value: region, label: region }))
+                    ...AWS_REGIONS.map(region => ({ value: region, label: region }))
                   ]}
                   value={regionFilter}
                   onChange={(value) => setRegionFilter(value || '')}
                   clearable
                   style={{ minWidth: 150 }}
                 />
+
                 <TextInput
                   label="Search"
-                  placeholder="Search by ARN, name, or type..."
+                  placeholder="Search by ARN, name, type, or state..."
                   leftSection={<IconSearch size={16} />}
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.currentTarget.value)}
-                  style={{ minWidth: 250 }}
+                  style={{ minWidth: 280 }}
                 />
               </Group>
-              <Text size="sm" c="dimmed">
-                {totalCount} resources found
-              </Text>
+              <Group align="end" gap="md">
+                <Switch
+                  label="Active only"
+                  checked={activeOnlyFilter}
+                  onChange={(event) => setActiveOnlyFilter(event.currentTarget.checked)}
+                />
+                <Text size="sm" c="dimmed">
+                  {totalCount} resources found
+                </Text>
+              </Group>
             </Group>
           </Stack>
         </Paper>
@@ -264,16 +378,17 @@ export default function AWSResourcesPage() {
                 <Table.Tr>
                   <Table.Th style={{ minWidth: 140 }}>Resource Type</Table.Th>
                   <Table.Th style={{ minWidth: 120 }}>Name</Table.Th>
-                  <Table.Th style={{ minWidth: 200 }}>ARN</Table.Th>
+                  <Table.Th style={{ minWidth: 100 }}>Status</Table.Th>
+                  <Table.Th style={{ minWidth: 80 }}>Health</Table.Th>
                   <Table.Th style={{ minWidth: 100 }}>Region</Table.Th>
-                  <Table.Th style={{ minWidth: 120 }}>Account ID</Table.Th>
-                  <Table.Th style={{ minWidth: 100 }}>Last Seen</Table.Th>
+                  <Table.Th style={{ minWidth: 120 }}>Last Checked</Table.Th>
+                  <Table.Th style={{ minWidth: 80 }}>Actions</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
                 {filteredResources.length === 0 ? (
                   <Table.Tr>
-                    <Table.Td colSpan={6}>
+                    <Table.Td colSpan={7}>
                       <Text ta="center" c="dimmed" py="xl">
                         {loading ? 'Loading...' : 'No AWS resources found. Try discovering resources first.'}
                       </Text>
@@ -283,28 +398,62 @@ export default function AWSResourcesPage() {
                   filteredResources.map((resource) => (
                     <Table.Tr key={resource.id}>
                       <Table.Td>
-                        <Badge 
-                          color={getResourceTypeColor(resource.resourceType)} 
-                          variant="light"
-                          size="sm"
-                          style={{ maxWidth: 130 }}
-                        >
-                          <Text truncate size="xs">
-                            {resource.resourceType}
-                          </Text>
-                        </Badge>
+                        <Group gap="xs">
+                          <ThemeIcon 
+                            color={getResourceTypeColor(resource.resourceType)} 
+                            variant="light" 
+                            size="sm"
+                          >
+                            {getResourceTypeIcon(resource.resourceType)}
+                          </ThemeIcon>
+                          <Badge 
+                            color={getResourceTypeColor(resource.resourceType)} 
+                            variant="light"
+                            size="sm"
+                            style={{ maxWidth: 100 }}
+                          >
+                            <Text truncate size="xs">
+                              {resource.resourceType.split('::')[1]}
+                            </Text>
+                          </Badge>
+                        </Group>
                       </Table.Td>
                       <Table.Td>
-                        <Text fw={500} size="sm" style={{ maxWidth: 110 }} truncate>
-                          {resource.nameTag || 'Unnamed'}
-                        </Text>
+                        <div>
+                          <Text fw={500} size="sm" style={{ maxWidth: 110 }} truncate>
+                            {resource.nameTag || 'Unnamed'}
+                          </Text>
+                          {resource.isActive !== undefined && (
+                            <Badge 
+                              size="xs" 
+                              color={resource.isActive ? 'green' : 'red'} 
+                              variant="dot"
+                            >
+                              {resource.isActive ? 'Active' : 'Inactive'}
+                            </Badge>
+                          )}
+                        </div>
                       </Table.Td>
                       <Table.Td>
-                        <Tooltip label={resource.arn} multiline>
-                          <Text size="xs" c="dimmed" style={{ maxWidth: 180 }} truncate>
-                            {resource.arn}
+                        {resource.resourceState ? (
+                          <Badge 
+                            color={getResourceStateColor(resource.resourceState)} 
+                            variant="light" 
+                            size="sm"
+                          >
+                            {resource.resourceState}
+                          </Badge>
+                        ) : (
+                          <Text size="xs" c="dimmed">Unknown</Text>
+                        )}
+                      </Table.Td>
+                      <Table.Td>
+                        <Group gap="xs">
+                          {getHealthStatusIcon(resource.healthStatus)}
+                          <Text size="xs" c="dimmed">
+                            {resource.healthStatus || 'Unknown'}
                           </Text>
-                        </Tooltip>
+                        </Group>
                       </Table.Td>
                       <Table.Td>
                         <Badge variant="outline" size="xs">
@@ -312,14 +461,28 @@ export default function AWSResourcesPage() {
                         </Badge>
                       </Table.Td>
                       <Table.Td>
-                        <Text size="xs" c="dimmed" style={{ maxWidth: 110 }} truncate>
-                          {resource.awsAccountId}
-                        </Text>
+                        <div>
+                          <Text size="xs" c="dimmed">
+                            {resource.statusLastChecked 
+                              ? new Date(resource.statusLastChecked).toLocaleDateString()
+                              : 'Never'
+                            }
+                          </Text>
+                          {resource.statusLastChecked && (
+                            <Text size="xs" c="dimmed">
+                              {new Date(resource.statusLastChecked).toLocaleTimeString()}
+                            </Text>
+                          )}
+                        </div>
                       </Table.Td>
                       <Table.Td>
-                        <Text size="xs" c="dimmed">
-                          {new Date(resource.lastSeenAt).toLocaleDateString()}
-                        </Text>
+                        <ActionIcon 
+                          variant="light" 
+                          size="sm"
+                          onClick={() => openDetailsModal(resource)}
+                        >
+                          <IconEye size={14} />
+                        </ActionIcon>
                       </Table.Td>
                     </Table.Tr>
                   ))
@@ -340,6 +503,92 @@ export default function AWSResourcesPage() {
           </Group>
         )}
       </Stack>
+
+      {/* Resource Details Modal */}
+      <Modal
+        opened={detailsModalOpen}
+        onClose={() => setDetailsModalOpen(false)}
+        title={
+          <Group>
+            <ThemeIcon 
+              color={selectedResource ? getResourceTypeColor(selectedResource.resourceType) : 'gray'} 
+              variant="light"
+            >
+              {selectedResource && getResourceTypeIcon(selectedResource.resourceType)}
+            </ThemeIcon>
+            <div>
+              <Text fw={600}>{selectedResource?.nameTag || 'Unnamed Resource'}</Text>
+              <Text size="sm" c="dimmed">{selectedResource?.resourceType}</Text>
+            </div>
+          </Group>
+        }
+        size="lg"
+      >
+        {selectedResource && (
+          <Stack gap="md">
+            <Card withBorder>
+              <Stack gap="sm">
+                <Text fw={600} size="sm">Resource Information</Text>
+                <Grid>
+                  <Grid.Col span={6}>
+                    <Text size="sm" fw={500}>ARN</Text>
+                    <Text size="xs" c="dimmed" style={{ wordBreak: 'break-all' }}>
+                      {selectedResource.arn}
+                    </Text>
+                  </Grid.Col>
+                  <Grid.Col span={6}>
+                    <Text size="sm" fw={500}>Account ID</Text>
+                    <Text size="xs" c="dimmed">{selectedResource.awsAccountId}</Text>
+                  </Grid.Col>
+                  <Grid.Col span={6}>
+                    <Text size="sm" fw={500}>Region</Text>
+                    <Text size="xs" c="dimmed">{selectedResource.awsRegion}</Text>
+                  </Grid.Col>
+                  <Grid.Col span={6}>
+                    <Text size="sm" fw={500}>First Discovered</Text>
+                    <Text size="xs" c="dimmed">
+                      {new Date(selectedResource.firstDiscoveredAt).toLocaleString()}
+                    </Text>
+                  </Grid.Col>
+                </Grid>
+              </Stack>
+            </Card>
+
+            {selectedResource.statusDetails && (
+              <Card withBorder>
+                <Stack gap="sm">
+                  <Text fw={600} size="sm">Status Details</Text>
+                  {renderStatusDetails(selectedResource)}
+                </Stack>
+              </Card>
+            )}
+
+            {selectedResource.operationalMetrics && (
+              <Card withBorder>
+                <Stack gap="sm">
+                  <Text fw={600} size="sm">Operational Metrics</Text>
+                  {renderOperationalMetrics(selectedResource)}
+                </Stack>
+              </Card>
+            )}
+
+            {selectedResource.allTags && Object.keys(selectedResource.allTags).length > 0 && (
+              <Card withBorder>
+                <Stack gap="sm">
+                  <Text fw={600} size="sm">Tags</Text>
+                  <Group gap="xs">
+                    {Object.entries(selectedResource.allTags).map(([key, value]) => (
+                      <Badge key={key} variant="outline" size="sm">
+                        {key}: {value}
+                      </Badge>
+                    ))}
+                  </Group>
+                </Stack>
+              </Card>
+            )}
+          </Stack>
+        )}
+      </Modal>
     </Container>
   );
 } 
