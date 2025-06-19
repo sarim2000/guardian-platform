@@ -38,6 +38,56 @@ This foundation supports better operational decision-making and establishes the 
 - ESLint - Code linting and formatting
 - Turbopack - Fast bundler for development
 
+## Quick Setup
+
+### Local Development
+
+1. **Clone repository**
+   ```bash
+   git clone <repository-url>
+   cd guardian-nextjs
+   ```
+
+2. **Environment setup**
+   ```bash
+   cp .env.example .env.local
+   ```
+   Fill in required variables:
+   - `DATABASE_URL` - PostgreSQL connection string
+   - `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_INSTALLATION_ID` - GitHub App credentials
+   - `AWS_CREDENTIALS_ENCRYPTION_KEY` - Generate with `openssl rand -base64 32`
+   - `LLAMA_API_KEY` - LlamaIndex Cloud API key
+   - `LLM_API_KEY` - OpenAI or LLM provider API key
+   - `EMBEDDING_API_KEY` - Embedding model API key
+
+3. **Database migrations**
+   ```bash
+   npm run db:migrate
+   ```
+
+4. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+5. **Run development server**
+   ```bash
+   npm run dev
+   ```
+
+### Docker
+
+```bash
+docker build -t guardian .
+docker run -p 3000:3000 guardian
+```
+
+### Setup Notes
+- **GitHub App**: Create with repository read permissions and webhook URL
+- **AWS**: Use read-only IAM credentials for resource discovery
+- **Prerequisites**: PostgreSQL with pgvector extension, Node.js 20+
+
+Detailed setup instructions available in [docs/README.md](docs/README.md)
 
 ## Interesting New Thing
 
