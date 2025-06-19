@@ -155,9 +155,3 @@ Includes PostgreSQL with pgvector and handles environment variables from `.env.l
 - AWS IAM credentials (read-only)
 
 > 📖 **Need help?** Check out the [detailed setup guide](docs/README.md) for GitHub App creation, AWS configuration, and troubleshooting.
-
-## Interesting New Thing
-
-### Parallel Routes + Intercepting Routes for Seamless Modal Experience
-
-Combined Next.js Parallel Routes (`@chat` slot) with Intercepting Routes (`(...)chat`) to create URL-driven modals that work as both overlays and shareable full pages. Click "Chat with Docs" from service cards opens a modal, while direct `/chat` navigation loads the full page - all without traditional state management.
