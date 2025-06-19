@@ -163,24 +163,32 @@ export function ChatMessage({ message, isStreaming = false }: ChatMessageProps) 
   const showTypingIndicator = isStreaming && message.role === 'assistant' && !message.content.trim()
 
   return (
-    <Group align="flex-start" gap="sm">
-      <ActionIcon
-        size="sm"
-        variant="light"
-        color={message.role === 'user' ? 'blue' : 'violet'}
-        style={{ marginTop: 4, flexShrink: 0 }}
-      >
-        {message.role === 'user' ? <IconUser size={14} /> : <IconRobot size={14} />}
-      </ActionIcon>
+    <Group 
+      align="flex-start" 
+      gap="sm"
+      justify={message.role === 'user' ? 'flex-end' : 'flex-start'}
+      style={{ width: '100%' }}
+    >
+      {message.role === 'assistant' && (
+        <ActionIcon
+          size="sm"
+          variant="light"
+          color="violet"
+          style={{ marginTop: 4, flexShrink: 0 }}
+        >
+          <IconRobot size={14} />
+        </ActionIcon>
+      )}
 
       <Paper
         p="md"
         withBorder
         style={{
           backgroundColor: message.role === 'user' ? 'var(--mantine-color-blue-0)' : 'var(--mantine-color-violet-1)',
-          flex: 1,
           maxWidth: '85%',
           minHeight: showTypingIndicator ? '60px' : 'auto',
+          marginLeft: message.role === 'user' ? 'auto' : '0',
+          marginRight: message.role === 'user' ? '0' : 'auto',
         }}
       >
         {showTypingIndicator ? (
@@ -212,6 +220,17 @@ export function ChatMessage({ message, isStreaming = false }: ChatMessageProps) 
           </>
         )}
       </Paper>
+
+      {message.role === 'user' && (
+        <ActionIcon
+          size="sm"
+          variant="light"
+          color="blue"
+          style={{ marginTop: 4, flexShrink: 0 }}
+        >
+          <IconUser size={14} />
+        </ActionIcon>
+      )}
     </Group>
   )
 }
