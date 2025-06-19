@@ -35,7 +35,6 @@ import {
 } from '@aws-sdk/client-cloudwatch';
 import { db, awsDiscoveredResources } from '@/db';
 import { eq } from 'drizzle-orm';
-import env from '@/utils/env';
 
 interface AWSCredentials {
   accessKeyId: string;
@@ -175,17 +174,25 @@ const SUPPORTED_RESOURCE_TYPES: string[] = [
 export class AWSDiscoveryService {
   private credentials: AWSCredentials;
   private regions: string[];
+  private awsAccountConfigId?: string; // Optional for multi-account support
 
-  constructor() {
+  constructor(credentials: {
+    accessKeyId: string;
+    secretAccessKey: string;
+    region: string;
+    regions?: string[];
+    awsAccountConfigId?: string;
+  }) {
     this.credentials = {
-      accessKeyId: env.AWS_ACCESS_KEY_ID,
-      secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
-      region: env.AWS_REGION,
+      accessKeyId: credentials.accessKeyId,
+      secretAccessKey: credentials.secretAccessKey,
+      region: credentials.region,
     };
-    this.regions = env.AWS_REGIONS;
+    this.regions = credentials.regions || [credentials.region];
+    this.awsAccountConfigId = credentials.awsAccountConfigId;
 
     if (!this.credentials.accessKeyId || !this.credentials.secretAccessKey) {
-      throw new Error('AWS credentials not found in environment variables');
+      throw new Error('AWS credentials are required');
     }
   }
 
@@ -322,6 +329,7 @@ export class AWSDiscoveryService {
 
       return {
         arn: resource.ResourceARN,
+        awsAccountConfigId: this.awsAccountConfigId, // Will be set if using multi-account discovery
         awsAccountId,
         awsRegion: region,
         resourceType,
@@ -506,7 +514,7 @@ export class AWSDiscoveryService {
           await db
             .update(awsDiscoveredResources)
             .set({
-              awsAccountConfigId: resource.awsAccountConfigId, // Will be null for legacy usage, populated for multi-account
+              awsAccountConfigId: resource.awsAccountConfigId,
               awsAccountId: resource.awsAccountId,
               nameTag: resource.nameTag,
               allTags: resource.allTags,
@@ -524,7 +532,7 @@ export class AWSDiscoveryService {
           // Insert new resource
           await db.insert(awsDiscoveredResources).values({
             arn: resource.arn,
-            awsAccountConfigId: resource.awsAccountConfigId, // Will be null for legacy single-account usage
+            awsAccountConfigId: resource.awsAccountConfigId,
             awsAccountId: resource.awsAccountId,
             awsRegion: resource.awsRegion,
             resourceType: resource.resourceType,

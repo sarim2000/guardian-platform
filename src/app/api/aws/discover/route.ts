@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AWSDiscoveryService } from '@/services/aws-discovery';
 import { MultiAccountAWSDiscoveryService } from '@/services/aws-multi-account-discovery';
 
 const multiAccountService = new MultiAccountAWSDiscoveryService();

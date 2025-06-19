@@ -2,32 +2,10 @@ import {
   ResourceGroupsTaggingAPIClient, 
   GetResourcesCommand
 } from '@aws-sdk/client-resource-groups-tagging-api';
-import { 
-  EC2Client, 
-  DescribeInstancesCommand,
-  DescribeInstanceStatusCommand
-} from '@aws-sdk/client-ec2';
-import { 
-  RDSClient, 
-  DescribeDBInstancesCommand,
-  DescribeDBClustersCommand
-} from '@aws-sdk/client-rds';
-import { 
-  LambdaClient, 
-  GetFunctionConfigurationCommand
-} from '@aws-sdk/client-lambda';
-import { 
-  ECSClient, 
-  DescribeServicesCommand,
-} from '@aws-sdk/client-ecs';
-import { 
-  ElasticLoadBalancingV2Client, 
-  DescribeLoadBalancersCommand,
-  DescribeTargetGroupsCommand
-} from '@aws-sdk/client-elastic-load-balancing-v2';
 import { db, awsAccounts, awsDiscoveredResources } from '@/db';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
+import env from '@/utils/env';
 
 interface AWSAccountCredentials {
   id: string;
@@ -60,7 +38,7 @@ export class MultiAccountAWSDiscoveryService {
 
   constructor() {
     // Use a secure encryption key from environment
-    this.encryptionKey = process.env.AWS_CREDENTIALS_ENCRYPTION_KEY || 'default-key-change-in-production';
+    this.encryptionKey = env.AWS_CREDENTIALS_ENCRYPTION_KEY;
   }
 
   /**
@@ -92,6 +70,7 @@ export class MultiAccountAWSDiscoveryService {
    * Add a new AWS account to the system
    */
   async addAWSAccount(accountData: {
+    accountId: string;
     accountName: string;
     accessKeyId: string;
     secretAccessKey: string;
@@ -102,6 +81,7 @@ export class MultiAccountAWSDiscoveryService {
     isDefault?: boolean;
   }): Promise<string> {
     try {
+      console.log("Adding AWS account", this.encryptionKey);
       // Encrypt sensitive credentials
       const encryptedAccessKey = this.encrypt(accountData.accessKeyId);
       const encryptedSecretKey = this.encrypt(accountData.secretAccessKey);
@@ -116,7 +96,8 @@ export class MultiAccountAWSDiscoveryService {
       });
 
       try {
-        await testClient.send(new GetResourcesCommand({ ResourcesPerPage: 1 }));
+        const result = await testClient.send(new GetResourcesCommand({ ResourcesPerPage: 1 }));
+        console.log('test aws result', result);
       } catch (error) {
         throw new Error('Invalid AWS credentials provided');
       }
@@ -132,7 +113,7 @@ export class MultiAccountAWSDiscoveryService {
       // Insert the new account
       const result = await db.insert(awsAccounts).values({
         accountName: accountData.accountName,
-        accountId: '', // We'll update this after we can query it
+        accountId: accountData.accountId, // We'll update this after we can query it
         accessKeyId: encryptedAccessKey,
         secretAccessKey: encryptedSecretKey,
         defaultRegion: accountData.defaultRegion,
@@ -211,41 +192,26 @@ export class MultiAccountAWSDiscoveryService {
     const discoveredResources: DiscoveredResource[] = [];
 
     try {
-      // Create a temporary instance of the original discovery service with account-specific credentials
+      // Import and create discovery service with account-specific credentials
       const { AWSDiscoveryService } = await import('./aws-discovery');
       
-      // Override the credentials for this account
-      const originalEnv = {
-        AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
-        AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
-        AWS_REGION: process.env.AWS_REGION,
-        AWS_REGIONS: process.env.AWS_REGIONS,
-      };
+      const discoveryService = new AWSDiscoveryService({
+        accessKeyId: account.accessKeyId,
+        secretAccessKey: account.secretAccessKey,
+        region: account.defaultRegion,
+        regions: account.regions,
+        awsAccountConfigId: account.id, // Pass the account config ID for proper foreign key relationship
+      });
 
-      // Temporarily set environment variables for this account
-      process.env.AWS_ACCESS_KEY_ID = account.accessKeyId;
-      process.env.AWS_SECRET_ACCESS_KEY = account.secretAccessKey;
-      process.env.AWS_REGION = account.defaultRegion;
-      process.env.AWS_REGIONS = account.regions.join(',');
+      const resources = await discoveryService.discoverResources();
 
-      try {
-        const discoveryService = new AWSDiscoveryService();
-        const resources = await discoveryService.discoverResources();
-
-        // Transform the resources to include the account config ID
-        for (const resource of resources) {
-          discoveredResources.push({
-            ...resource,
-            awsAccountConfigId: account.id, // Add the foreign key
-            awsAccountId: account.accountId, // Ensure we have the AWS account ID
-          });
-        }
-      } finally {
-        // Restore original environment variables
-        process.env.AWS_ACCESS_KEY_ID = originalEnv.AWS_ACCESS_KEY_ID;
-        process.env.AWS_SECRET_ACCESS_KEY = originalEnv.AWS_SECRET_ACCESS_KEY;
-        process.env.AWS_REGION = originalEnv.AWS_REGION;
-        process.env.AWS_REGIONS = originalEnv.AWS_REGIONS;
+      // Transform the resources to include the account config ID
+      for (const resource of resources) {
+        discoveredResources.push({
+          ...resource,
+          awsAccountConfigId: account.id, // Ensure the foreign key is set
+          awsAccountId: account.accountId, // Ensure we have the AWS account ID
+        });
       }
 
       return discoveredResources;

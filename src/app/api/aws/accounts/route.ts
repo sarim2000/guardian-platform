@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
+      accountId,
       accountName,
       accessKeyId,
       secretAccessKey,
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!accountName || !accessKeyId || !secretAccessKey || !defaultRegion) {
+    if (!accountName || !accessKeyId || !secretAccessKey || !defaultRegion || !accountId) {
       return NextResponse.json(
         { 
           success: false, 
@@ -60,7 +61,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const accountId = await multiAccountService.addAWSAccount({
+    await multiAccountService.addAWSAccount({
+      accountId,
       accountName,
       accessKeyId,
       secretAccessKey,
@@ -73,7 +75,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: { accountId },
       message: 'AWS account added successfully'
     });
   } catch (error) {
