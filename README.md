@@ -81,38 +81,32 @@ This foundation supports better operational decision-making and establishes the 
 
 **🎨 Frontend**
 - Next.js 15 with App Router
-- React 19 + TypeScript
 - Mantine UI Components
-- Parallel & Intercepting Routes
 
 </td>
 <td>
 
 **🗄️ Backend & Database**
-- PostgreSQL + pgvector
+- PostgreSQL with pgvector
 - Drizzle ORM
-- Multi-table schema design
-- Foreign key relationships
 
 </td>
 </tr>
 <tr>
 <td>
 
-**☁️ Cloud Integration**
-- AWS SDK v3
-- Resource Groups Tagging API
-- Multi-account management
-- AES-256 credential encryption
-
-</td>
-<td>
-
 **🤖 AI & Search**
 - LlamaIndex Cloud
 - pgvector similarity search
 - OpenAI Integration
-- Semantic document matching
+
+</td>
+<td>
+
+**☁️ Infrastructure**
+- Docker & Docker Compose
+- AWS SDK Integration
+- GitHub API Integration
 
 </td>
 </tr>
