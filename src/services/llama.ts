@@ -22,14 +22,16 @@ function initializeSettings() {
   }
 
   Settings.embedModel = new OpenAIEmbedding({
-    apiKey: env.OPENAI_API_KEY,
-    model: "text-embedding-3-large",
+    apiKey: env.EMBEDDING_API_KEY,
+    model: env.EMBEDDING_MODEL,
+    baseURL: env.EMBEDDING_MODEL_BASE_URL,
     dimensions: 1536,
   });
 
   Settings.llm = new OpenAI({
-    apiKey: env.OPENAI_API_KEY,
-    model: "gpt-4o-mini",
+    apiKey: env.LLM_API_KEY,
+    model: env.LLM_MODEL,
+    baseURL: env.LLM_BASE_URL,
   });
 
   settingsInitialized = true;
@@ -226,7 +228,7 @@ export class LlamaService {
       
       const chatEngine = index.asChatEngine({
         retriever: retriever,
-        
+
       });
 
       return chatEngine;

@@ -20,7 +20,13 @@ const envSchema = z.object({
   LLAMA_CLOUD_BASE_URL: z.string().url().default("https://api.cloud.llamaindex.ai"),
   
   // OpenAI API key for embeddings
-  OPENAI_API_KEY: z.string().min(1),
+  LLM_API_KEY: z.string().min(1),
+  LLM_MODEL: z.string().min(1),
+  LLM_BASE_URL: z.string().url().default("https://api.openai.com/v1"),
+
+  EMBEDDING_API_KEY: z.string().min(1),
+  EMBEDDING_MODEL: z.string().min(1),
+  EMBEDDING_MODEL_BASE_URL: z.string().url().default("https://api.openai.com/v1"),
 })
 
 // Validate `process.env` against our schema
