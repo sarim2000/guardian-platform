@@ -9,10 +9,10 @@
 </p>
 
 <p align="center">
-  <a href="#quick-setup">🚀 Quick Start</a> •
+  <a href="#-quick-setup">🚀 Quick Start</a> •
   <a href="docs/README.md">📖 Setup Guide</a> •
-  <a href="#core-features">✨ Features</a> •
-  <a href="#tech-stack">🔧 Tech Stack</a>
+  <a href="#-core-features">✨ Features</a> •
+  <a href="#-tech-stack">🔧 Tech Stack</a>
 </p>
 
 ## Todo
