@@ -1,8 +1,8 @@
 # Guardian Platform
 
-## Overview
+A comprehensive infrastructure and service discovery platform that provides centralized visibility into your organization's services and cloud resources.
 
-Guardian Platform provides centralized visibility into an organization's services and cloud resources. The platform enables teams to:
+## Core Features
 
 - **Service Discovery**: Automatically catalog services through owner-defined YAML manifests
 - **Documentation Chat**: AI-powered conversations with service documentation using LlamaIndex
@@ -14,15 +14,20 @@ This foundation supports better operational decision-making and establishes the 
 
 ## Tech Stack
 
-**Frontend & UI**
-- Next.js 15 (React 19) - Full-stack React framework with App Router
-- Mantine UI - Modern React components and utilities
-- TypeScript - Type-safe development
+**Frontend**
+- **Next.js 15** with App Router and React 19
+- **Mantine UI** for modern React components
+- **TypeScript** for type-safe development
 
 **Backend & Database**
-- Drizzle ORM - Type-safe database operations
-- PostgreSQL with pgvector - Relational database with vector search capabilities
-- AWS SDK - Cloud resource discovery and management
+- **PostgreSQL** with pgvector for vector similarity search
+- **Drizzle ORM** for type-safe database operations
+- **Multi-table schema** with proper foreign key relationships
+
+**Cloud Integration**
+- **AWS SDK v3** with support for multiple service clients
+- **Resource Groups Tagging API** for comprehensive resource discovery
+- **Multi-account credential management** with AES-256 encryption
 
 **AI & Search**
 - LlamaIndex - Document indexing and intelligent retrieval

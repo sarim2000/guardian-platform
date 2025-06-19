@@ -1,28 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AWSDiscoveryService } from '@/services/aws-discovery';
+import { MultiAccountAWSDiscoveryService } from '@/services/aws-multi-account-discovery';
 
-export async function POST(request: NextRequest) {
+const multiAccountService = new MultiAccountAWSDiscoveryService();
+
+export async function POST() {
   try {
-    const discoveryService = new AWSDiscoveryService();
-    const discoveredResources = await discoveryService.discoverResources();
+    console.log('Starting AWS resource discovery...');
+    
+    const discoveredResources = await multiAccountService.discoverAllAccountResources();
+    
+    // Get unique account count
+    const accountsProcessed = new Set(discoveredResources.map(r => r.awsAccountId)).size;
     
     return NextResponse.json({
       success: true,
-      message: `Successfully discovered ${discoveredResources.length} AWS resources`,
-      resourceCount: discoveredResources.length,
-      resources: discoveredResources.map(r => ({
-        arn: r.arn,
-        resourceType: r.resourceType,
-        nameTag: r.nameTag,
-        awsRegion: r.awsRegion,
-      })),
+      message: 'AWS resource discovery completed successfully',
+      resourcesDiscovered: discoveredResources.length,
+      accountsProcessed,
     });
   } catch (error) {
-    console.error('AWS discovery error:', error);
+    console.error('Error during AWS resource discovery:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+      { 
+        success: false, 
+        error: 'Failed to discover AWS resources',
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );

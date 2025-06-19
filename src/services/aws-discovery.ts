@@ -45,6 +45,7 @@ interface AWSCredentials {
 
 interface DiscoveredResource {
   arn: string;
+  awsAccountConfigId?: string; // Optional for backward compatibility
   awsAccountId: string;
   awsRegion: string;
   resourceType: string;
@@ -505,6 +506,8 @@ export class AWSDiscoveryService {
           await db
             .update(awsDiscoveredResources)
             .set({
+              awsAccountConfigId: resource.awsAccountConfigId, // Will be null for legacy usage, populated for multi-account
+              awsAccountId: resource.awsAccountId,
               nameTag: resource.nameTag,
               allTags: resource.allTags,
               rawMetadata: resource.rawMetadata,
@@ -521,6 +524,7 @@ export class AWSDiscoveryService {
           // Insert new resource
           await db.insert(awsDiscoveredResources).values({
             arn: resource.arn,
+            awsAccountConfigId: resource.awsAccountConfigId, // Will be null for legacy single-account usage
             awsAccountId: resource.awsAccountId,
             awsRegion: resource.awsRegion,
             resourceType: resource.resourceType,

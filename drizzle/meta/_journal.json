@@ -43,6 +43,20 @@
       "when": 1750315505178,
       "tag": "0005_reflective_paibok",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1750319164981,
+      "tag": "0006_bumpy_vertigo",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1750320454451,
+      "tag": "0007_exotic_scalphunter",
+      "breakpoints": true
     }
   ]
 }

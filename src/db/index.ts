@@ -14,3 +14,4 @@ export const db = drizzle({
 // Export schemas
 export * from './schema/service';
 export * from './schema/aws-resources';
+export * from './schema/aws-accounts';
