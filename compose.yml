@@ -5,6 +5,3 @@ services:
       - "3000:3000"
     env_file:
       - .env.local
-    environment:
-      - DATABASE_URL=postgresql://postgres:password@db:5432/guardian_db
-

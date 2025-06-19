@@ -4,6 +4,7 @@ A comprehensive infrastructure and service discovery platform that provides cent
 
 ## Todo
 
+- [ ] Log handler
 - [X] Handle multiple AWS accounts
 - [ ] Move to tanstack query and tanstack table
 - [ ] Deployment checklist automation
@@ -86,7 +87,7 @@ This foundation supports better operational decision-making and establishes the 
 ### Docker Compose
 
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 
