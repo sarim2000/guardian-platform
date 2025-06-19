@@ -2,6 +2,14 @@
 
 A comprehensive infrastructure and service discovery platform that provides centralized visibility into your organization's services and cloud resources.
 
+## Todo
+
+- [X] Handle multiple AWS accounts
+- [ ] Move to tanstack query and tanstack table
+- [ ] Deployment checklist automation
+- [ ] Authentication setup (org level)
+- [ ] Monitoring from the given url (if in the service)
+
 ## Core Features
 
 - **Service Discovery**: Automatically catalog services through owner-defined YAML manifests
@@ -75,12 +83,12 @@ This foundation supports better operational decision-making and establishes the 
    npm run dev
    ```
 
-### Docker
+### Docker Compose
 
 ```bash
-docker build -t guardian .
-docker run -p 3000:3000 guardian
+docker-compose up --build
 ```
+
 
 ### Setup Notes
 - **GitHub App**: Create with repository read permissions and webhook URL
