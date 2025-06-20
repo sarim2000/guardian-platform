@@ -15,14 +15,6 @@
   <a href="#-tech-stack">🔧 Tech Stack</a>
 </p>
 
-## Todo
-
-- [ ] Log handler
-- [X] Handle multiple AWS accounts
-- [ ] Move to tanstack query and tanstack table
-- [ ] Deployment checklist automation
-- [ ] Authentication setup (org level)
-- [ ] Monitoring from the given url (if in the service)
 
 ## ✨ Core Features
 
@@ -155,3 +147,13 @@ Includes PostgreSQL with pgvector and handles environment variables from `.env.l
 - AWS IAM credentials (read-only)
 
 > 📖 **Need help?** Check out the [detailed setup guide](docs/README.md) for GitHub App creation, AWS configuration, and troubleshooting.
+
+
+## Todo
+
+- [ ] Log handler
+- [X] Handle multiple AWS accounts
+- [ ] Move to tanstack query and tanstack table
+- [ ] Deployment checklist automation
+- [ ] Authentication setup (org level)
+- [ ] Monitoring from the given url (if in the service)
