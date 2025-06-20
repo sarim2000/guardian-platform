@@ -221,3 +221,4 @@ Includes PostgreSQL with pgvector and handles environment variables from `.env.l
 - [ ] Deployment checklist automation
 - [ ] Authentication setup (org level)
 - [ ] Monitoring from the given url (if in the service)
+- [ ] Periodic api call setup for service discovery and cloud resources
