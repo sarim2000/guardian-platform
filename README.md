@@ -65,6 +65,70 @@ Centralized control panel for managing the platform, users, and system configura
 
 This foundation supports better operational decision-making and establishes the groundwork for comprehensive service readiness management.
 
+## 📝 Service Discovery Setup
+
+Guardian automatically discovers services through owner-defined YAML manifests in your repositories. Here's how to get started:
+
+### 1. Create the `.guardian` Folder
+In your repository root, create a `.guardian` folder:
+```bash
+mkdir .guardian
+```
+
+### 2. Create Service Manifests
+Add YAML files named after your services (e.g., `my-service.yml`):
+
+```yaml
+kind: Service
+metadata:
+  name: node-service              # Required: Unique service identifier
+  displayName: "Node Service"     # Optional: Human-readable name
+  description: "Manages request routing to appropriate services"
+
+spec:
+  owner:
+    team: platform-team           # Required: Owning team
+    email: team@company.com       # Optional: Contact email
+  
+  lifecycle: production           # Required: development|beta|production|deprecated|retired
+  tier: tier1                    # Optional: tier1 (critical) to tier4 (low priority)
+  type: api                      # Optional: api|frontend|worker|cronjob|database|library
+  partOf: user-platform          # Optional: Larger system this service belongs to
+  
+  techStack:                     # Optional: Technologies used
+    - "Language: Node.js"
+    - "Framework: Fastify"
+    - "Database: PostgreSQL"
+  
+  links:                         # Optional: Important service URLs
+    - name: "Source Code"
+      url: "https://github.com/org/service"
+    - name: "API Documentation"
+      url: "https://api.company.com/docs"
+    - name: "Dashboard"
+      url: "https://grafana.company.com/service-dashboard"
+```
+
+### 3. Repository Structure
+```
+your-repo/
+├── .guardian/
+│   ├── api-service.yml
+│   ├── worker-service.yml
+│   └── frontend-app.yml
+├── src/
+└── ...
+```
+
+### 4. Automatic Discovery
+Guardian will:
+- Periodically scan repositories for `.guardian` folders
+- Catalog services and their metadata
+- Build dependency relationships
+- Enable chat with service documentation
+
+> 📖 **Need more details?** Visit `/onboarding` in your Guardian instance for the complete setup guide with examples.
+
 ## 🔧 Tech Stack
 
 <table>
