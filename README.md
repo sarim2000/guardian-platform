@@ -15,6 +15,12 @@
   <a href="#-tech-stack">🔧 Tech Stack</a>
 </p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License" />
+  <img src="https://img.shields.io/badge/Next.js-15-black" alt="Next.js 15" />
+  <img src="https://img.shields.io/badge/PostgreSQL-pgvector-336791" alt="PostgreSQL with pgvector" />
+</p>
+
 
 ## ✨ Core Features
 
