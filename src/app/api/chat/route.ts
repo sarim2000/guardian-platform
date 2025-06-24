@@ -5,9 +5,50 @@ export async function POST(request: Request) {
   try {
     const { message, messages = [], repoName, organizationName, serviceName } = await request.json();
 
-    if (message || repoName || organizationName || serviceName) {
+    // Validate all required fields are present
+    if (!message || !repoName || !organizationName || !serviceName) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { 
+          error: 'Missing required fields',
+          details: {
+            message: !message ? 'Message is required' : undefined,
+            repoName: !repoName ? 'Repository name is required' : undefined,
+            organizationName: !organizationName ? 'Organization name is required' : undefined,
+            serviceName: !serviceName ? 'Service name is required' : undefined
+          }
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate field types
+    if (
+      typeof message !== 'string' || 
+      typeof repoName !== 'string' || 
+      typeof organizationName !== 'string' || 
+      typeof serviceName !== 'string'
+    ) {
+      return NextResponse.json(
+        { 
+          error: 'Invalid field types',
+          details: 'All fields must be strings'
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate field contents
+    if (
+      message.trim().length === 0 || 
+      repoName.trim().length === 0 || 
+      organizationName.trim().length === 0 || 
+      serviceName.trim().length === 0
+    ) {
+      return NextResponse.json(
+        { 
+          error: 'Empty fields not allowed',
+          details: 'All required fields must contain non-whitespace content'
+        },
         { status: 400 }
       );
     }
