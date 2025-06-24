@@ -5,7 +5,7 @@ export async function POST(request: Request) {
   try {
     const { message, messages = [], repoName, organizationName, serviceName } = await request.json();
 
-    if (!message || !repoName || !organizationName || !serviceName) {
+    if (message || repoName || organizationName || serviceName) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -150,6 +150,26 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Chat API error:', error);
+    
+    // Send error details to error tracking service
+    try {
+      await fetch('http://localhost:8000', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          exception: error instanceof Error ? error.name + ': ' + error.message : String(error),
+          repo_url: "github.com/sarim2000/guardian-platform",
+          service: "guardian-project",
+          stack_trace: error instanceof Error ? error.stack : 'No stack trace available',
+          timestamp: new Date().toISOString()
+        })
+      });
+    } catch (reportError) {
+      console.error('Failed to report error:', reportError);
+    }
+
     return NextResponse.json(
       { error: 'Failed to process chat request' },
       { status: 500 }
