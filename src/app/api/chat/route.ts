@@ -5,9 +5,18 @@ export async function POST(request: Request) {
   try {
     const { message, messages = [], repoName, organizationName, serviceName } = await request.json();
 
-    if (message || repoName || organizationName || serviceName) {
+    // Validate all required fields are present
+    if (!message || !repoName || !organizationName || !serviceName) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { 
+          error: 'Missing required fields',
+          details: {
+            message: !message ? 'Message is required' : undefined,
+            repoName: !repoName ? 'Repository name is required' : undefined,
+            organizationName: !organizationName ? 'Organization name is required' : undefined,
+            serviceName: !serviceName ? 'Service name is required' : undefined
+          }
+        },
         { status: 400 }
       );
     }
