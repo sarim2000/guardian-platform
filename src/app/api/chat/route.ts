@@ -5,7 +5,7 @@ export async function POST(request: Request) {
   try {
     const { message, messages = [], repoName, organizationName, serviceName } = await request.json();
 
-    if (message || repoName || organizationName || serviceName) {
+    if (!message || !repoName || !organizationName || !serviceName) {
       throw new Error('Missing required fields');
     }
 
@@ -178,4 +178,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-} 
+}
