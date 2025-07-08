@@ -6,10 +6,7 @@ export async function POST(request: Request) {
     const { message, messages = [], repoName, organizationName, serviceName } = await request.json();
 
     if (message || repoName || organizationName || serviceName) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      throw new Error('Missing required fields');
     }
 
     const systemPrompt = `
@@ -153,19 +150,25 @@ export async function POST(request: Request) {
     
     // Send error details to error tracking service
     try {
-      await fetch('http://localhost:8000', {
+      const payload = {
+        exception: error instanceof Error ? error.name + ': ' + error.message : String(error),
+        repo_url: "https://github.com/sarim2000/guardian-platform",
+        service: "guardian-project",
+        stack_trace: error instanceof Error ? error.stack : 'No stack trace available',
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log('Sending to self-healing service:', JSON.stringify(payload, null, 2));
+      
+      const response = await fetch('http://localhost:8000/exception-healer/webhook/exception', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          exception: error instanceof Error ? error.name + ': ' + error.message : String(error),
-          repo_url: "github.com/sarim2000/guardian-platform",
-          service: "guardian-project",
-          stack_trace: error instanceof Error ? error.stack : 'No stack trace available',
-          timestamp: new Date().toISOString()
-        })
+        body: JSON.stringify(payload)
       });
+      
+      console.log('Self-healing service response:', response.status, await response.text());
     } catch (reportError) {
       console.error('Failed to report error:', reportError);
     }
