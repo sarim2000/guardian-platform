@@ -5,8 +5,32 @@ export async function POST(request: Request) {
   try {
     const { message, messages = [], repoName, organizationName, serviceName } = await request.json();
 
-    if (message || repoName || organizationName || serviceName) {
-      throw new Error('Missing required fields');
+    // Validate that all required fields are present
+    if (!message || !repoName || !organizationName || !serviceName) {
+      const missingFields = [];
+      if (!message) missingFields.push('message');
+      if (!repoName) missingFields.push('repoName');
+      if (!organizationName) missingFields.push('organizationName');
+      if (!serviceName) missingFields.push('serviceName');
+      
+      throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+    }
+    
+    // Additional validation for message type and content
+    if (typeof message !== 'string' || message.trim().length === 0) {
+      throw new Error('Message must be a non-empty string');
+    }
+    
+    // Validate repository and organization names format
+    const namePattern = /^[a-zA-Z0-9-_.]+$/;
+    if (!namePattern.test(repoName)) {
+      throw new Error('Invalid repository name format');
+    }
+    if (!namePattern.test(organizationName)) {
+      throw new Error('Invalid organization name format');
+    }
+    if (!namePattern.test(serviceName)) {
+      throw new Error('Invalid service name format');
     }
 
     const systemPrompt = `
@@ -148,6 +172,21 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Chat API error:', error);
     
+    // Determine appropriate status code based on error type
+    let statusCode = 500;
+    let errorMessage = 'Failed to process chat request';
+    
+    if (error instanceof Error) {
+      // Handle validation errors with 400 status
+      if (error.message.includes('Missing required fields') || 
+          error.message.includes('must be a non-empty string') ||
+          error.message.includes('Invalid') ||
+          error.message.includes('format')) {
+        statusCode = 400;
+        errorMessage = error.message;
+      }
+    }
+    
     // Send error details to error tracking service
     try {
       const payload = {
@@ -155,7 +194,8 @@ export async function POST(request: Request) {
         repo_url: "https://github.com/sarim2000/guardian-platform",
         service: "guardian-project",
         stack_trace: error instanceof Error ? error.stack : 'No stack trace available',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        request_body: await request.clone().text().catch(() => 'Unable to read request body')
       };
       
       console.log('Sending to self-healing service:', JSON.stringify(payload, null, 2));
@@ -174,8 +214,13 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { error: 'Failed to process chat request' },
-      { status: 500 }
+      { 
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' && error instanceof Error 
+          ? { name: error.name, stack: error.stack } 
+          : undefined
+      },
+      { status: statusCode }
     );
   }
 } 
