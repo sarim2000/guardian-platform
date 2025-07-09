@@ -69,7 +69,15 @@ export function useChatStream({ service, messages, setMessages, setError }: UseC
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // Try to parse error message from the response
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          // If parsing fails, use the default error message
+        }
+        throw new Error(errorMessage);
       }
 
       if (!response.body) {
