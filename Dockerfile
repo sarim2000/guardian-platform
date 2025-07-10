@@ -1,66 +1,101 @@
 # syntax=docker.io/docker/dockerfile:1
 
-FROM node:20-alpine AS base
+# Use a specific Node.js version for better reproducibility
+ARG NODE_VERSION=20.18.0
+FROM node:${NODE_VERSION}-alpine AS base
+
+# Add labels for better image management
+LABEL maintainer="Guardian Platform Team"
+LABEL description="Guardian Platform - Next.js Application"
 
 # Install dependencies only when needed
 FROM base AS deps
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat python3 make g++
+# Install system dependencies required for node-gyp and native modules
+RUN apk add --no-cache libc6-compat python3 make g++ \
+    && rm -rf /var/cache/apk/*
+
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager
-COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* .npmrc* ./
-RUN \
-  if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then npm ci; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm i --frozen-lockfile; \
-  else echo "Lockfile not found." && exit 1; \
-  fi
+# Copy only package files for better layer caching
+COPY package*.json ./
+COPY .npmrc* ./
 
+# Install dependencies with npm ci for faster, more reliable builds
+RUN npm ci --only=production \
+    && cp -R node_modules prod_node_modules \
+    && npm ci \
+    && npm cache clean --force
 
-# Rebuild the source code only when needed
-FROM base AS builder
+# Development dependencies stage for build process
+FROM base AS dev-deps
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+COPY package*.json ./
+
+# Build stage
+FROM dev-deps AS builder
+WORKDIR /app
+
+# Copy source code
 COPY . .
 
-# Next.js collects completely anonymous telemetry data about general usage.
-# Learn more here: https://nextjs.org/telemetry
-# Uncomment the following line in case you want to disable telemetry during the build.
-# ENV NEXT_TELEMETRY_DISABLED=1
+# Set build-time environment variables
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+# Skip validation during build
+ENV SKIP_ENV_VALIDATION=1
 
-RUN \
-  if [ -f yarn.lock ]; then yarn run build; \
-  elif [ -f package-lock.json ]; then npm run build; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm run build; \
-  else echo "Lockfile not found." && exit 1; \
-  fi
+# Build the application with better error handling
+RUN npm run build || \
+    (echo "Build failed. Checking for common issues..." && \
+     echo "1. Ensure all required environment variables are set" && \
+     echo "2. Check for TypeScript errors" && \
+     echo "3. Verify all dependencies are installed" && \
+     exit 1)
 
-# Production image, copy all the files and run next
+# Prune dev dependencies after build
+RUN npm prune --production
+
+# Production image - minimal size
 FROM base AS runner
 WORKDIR /app
 
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init \
+    && rm -rf /var/cache/apk/*
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nextjs
+
+# Set production environment
 ENV NODE_ENV=production
-# Uncomment the following line in case you want to disable telemetry during runtime.
-# ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Copy only production dependencies
+COPY --from=deps --chown=nextjs:nodejs /app/prod_node_modules ./node_modules
 
-COPY --from=builder /app/public ./public
-
-# Automatically leverage output traces to reduce image size
-# https://nextjs.org/docs/advanced-features/output-file-tracing
+# Copy built application
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Add health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"
+
+# Switch to non-root user
 USER nextjs
 
+# Expose port
 EXPOSE 3000
 
+# Set runtime environment variables
 ENV PORT=3000
-
-# server.js is created by next build from the standalone output
-# https://nextjs.org/docs/pages/api-reference/config/next-config-js/output
 ENV HOSTNAME="0.0.0.0"
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start the application
 CMD ["node", "server.js"]
