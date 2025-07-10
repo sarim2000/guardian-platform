@@ -31,6 +31,8 @@ const envSchema = z.object({
 
 // Validate `process.env` against our schema
 // and return the result
-const env = envSchema.parse(process.env);
+const env = process.env.SKIP_ENV_VALIDATION === '1' 
+  ? process.env as z.infer<typeof envSchema>
+  : envSchema.parse(process.env);
 
 export default env;
